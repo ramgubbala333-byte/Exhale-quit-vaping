@@ -6,6 +6,7 @@ import { useState } from 'react';
 import {
   Alert,
   Platform,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -22,6 +23,7 @@ import {
   PrimaryButton,
   Screen,
 } from '@/components/ui';
+import MaxWidth from '@/components/MaxWidth';
 import { dailyCost, formatMoney } from '@/lib/calc';
 import {
   cancelReminders,
@@ -44,10 +46,17 @@ export default function Settings() {
   const resetAll = useStore((s) => s.resetAll);
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
+  const savingsGoal = useStore((s) => s.savingsGoal);
+  const setSavingsGoal = useStore((s) => s.setSavingsGoal);
 
   const [puffsText, setPuffsText] = useState<string | null>(null);
   const [unitsText, setUnitsText] = useState<string | null>(null);
   const [costText, setCostText] = useState<string | null>(null);
+  const [nicotineText, setNicotineText] = useState<string | null>(null);
+  const [flavourText, setFlavourText] = useState<string | null>(null);
+  const [goalNameText, setGoalNameText] = useState<string | null>(null);
+  const [goalPriceText, setGoalPriceText] = useState<string | null>(null);
+  const [goalSaved, setGoalSaved] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -56,6 +65,10 @@ export default function Settings() {
   const puffs = puffsText ?? String(plan.puffsPerDay);
   const units = unitsText ?? String(plan.unitsPerWeek);
   const cost = costText ?? String(plan.costPerUnit);
+  const nicotine = nicotineText ?? (plan.nicotineMg ? String(plan.nicotineMg) : '');
+  const flavour = flavourText ?? (plan.flavour ?? '');
+  const goalName = goalNameText ?? (savingsGoal?.name ?? '');
+  const goalPrice = goalPriceText ?? (savingsGoal ? String(savingsGoal.price) : '');
 
   const savePlan = () => {
     const p = parseInt(puffs, 10);
@@ -65,13 +78,65 @@ export default function Settings() {
       Alert.alert('Check the numbers', 'Habit numbers must all be above zero.');
       return;
     }
-    updatePlan({ puffsPerDay: p, unitsPerWeek: u, costPerUnit: c });
+    const mg = parseFloat(nicotine);
+    updatePlan({
+      puffsPerDay: p,
+      unitsPerWeek: u,
+      costPerUnit: c,
+      nicotineMg: mg > 0 ? mg : undefined,
+      flavour: flavour.trim() ? flavour.trim() : undefined,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     // Milestone alerts depend on the quit date, not the numbers, but a
     // re-save is a cheap moment to keep schedules in sync.
     if (notificationsEnabled) {
       scheduleReminders({ ...plan, puffsPerDay: p, unitsPerWeek: u, costPerUnit: c });
+    }
+  };
+
+  const saveGoal = () => {
+    const name = goalName.trim();
+    const price = parseFloat(goalPrice);
+    if (!name || !(price > 0)) {
+      Alert.alert('Check the goal', 'Give the goal a name and a price above zero.');
+      return;
+    }
+    setSavingsGoal({ name, price });
+    setGoalSaved(true);
+    setTimeout(() => setGoalSaved(false), 2000);
+  };
+
+  const exportData = async () => {
+    const s = useStore.getState();
+    const payload = {
+      app: 'Mistless',
+      exportedAt: new Date().toISOString(),
+      plan: s.plan,
+      cravings: s.cravings,
+      journal: s.journal,
+      bestStreakSeconds: s.bestStreakSeconds,
+      relapseCount: s.relapseCount,
+      lifetime: {
+        moneyBanked: s.lifetimeMoneyBanked,
+        puffsBanked: s.lifetimePuffsBanked,
+        unitsBanked: s.lifetimeUnitsBanked,
+        freeSecondsBanked: s.lifetimeFreeSecondsBanked,
+      },
+      taperPuffs: s.taperPuffs,
+      savingsGoal: s.savingsGoal,
+      notificationsEnabled: s.notificationsEnabled,
+    };
+    try {
+      await Share.share({
+        title: 'Mistless data export',
+        message: JSON.stringify(payload, null, 2),
+      });
+    } catch {
+      Alert.alert(
+        'Export failed',
+        'Your phone could not open the share sheet. Your data is unchanged and still only on this device.',
+      );
     }
   };
 
@@ -90,7 +155,7 @@ export default function Settings() {
       if (!granted) {
         Alert.alert(
           'Notifications are off',
-          'Exhale could not get notification permission. You can allow it in your phone settings.',
+          'Mistless could not get notification permission. You can allow it in your phone settings.',
         );
         return;
       }
@@ -105,7 +170,7 @@ export default function Settings() {
   const confirmResetAll = () => {
     Alert.alert(
       'Reset everything?',
-      'This permanently deletes your plan, streak, journal, and craving history from this phone.',
+      'This permanently deletes your plan, streaks, lifetime totals, journal, and craving history from this phone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -123,6 +188,7 @@ export default function Settings() {
 
   return (
     <Screen>
+      <MaxWidth>
       <Display size={32}>Settings</Display>
 
       <Label style={styles.sectionLabel}>Your habit baseline</Label>
@@ -158,7 +224,56 @@ export default function Settings() {
         onChangeText={setCostText}
         keyboardType="decimal-pad"
       />
+      <Field
+        label="Nicotine strength (mg/mL, optional)"
+        value={nicotine}
+        onChangeText={setNicotineText}
+        keyboardType="decimal-pad"
+      />
+      <Field
+        label="Your usual flavour (optional)"
+        value={flavour}
+        onChangeText={setFlavourText}
+        placeholder="e.g. Mint"
+      />
       <PrimaryButton title={saved ? 'Saved' : 'Save habit numbers'} onPress={savePlan} />
+
+      <Label style={styles.sectionLabel}>Savings goal</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+        Name the thing your kept money is buying. Your progress shows on
+        Home and Stats, filled by the money you did not spend on vaping.
+      </Body>
+      <Field
+        label="Saving toward"
+        value={goalName}
+        onChangeText={setGoalNameText}
+        placeholder="e.g. New headphones"
+      />
+      <Field
+        label="Price (USD)"
+        value={goalPrice}
+        onChangeText={setGoalPriceText}
+        keyboardType="decimal-pad"
+        placeholder="e.g. 180"
+      />
+      <PrimaryButton title={goalSaved ? 'Saved' : 'Save goal'} onPress={saveGoal} />
+      {savingsGoal && (
+        <GhostButton
+          title="Remove goal"
+          onPress={() => {
+            setSavingsGoal(null);
+            setGoalNameText('');
+            setGoalPriceText('');
+          }}
+        />
+      )}
+
+      <Label style={styles.sectionLabel}>Your data</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+        Everything lives on this phone. Export a copy of it all as JSON
+        whenever you like; nothing leaves the device unless you share it.
+      </Body>
+      <GhostButton title="Export my data" onPress={exportData} />
 
       <Label style={styles.sectionLabel}>Quit date</Label>
       <Body color={colors.inkMuted}>
@@ -209,17 +324,18 @@ export default function Settings() {
         />
       </View>
 
-      <Label style={styles.sectionLabel}>Exhale Plus</Label>
+      <Label style={styles.sectionLabel}>Mistless Plus</Label>
       <GhostButton
         title="See what Plus will include"
         onPress={() => router.push('/paywall')}
       />
 
       <Label style={styles.sectionLabel}>About</Label>
-      <GhostButton title="About Exhale" onPress={() => router.push('/about')} />
+      <GhostButton title="About Mistless" onPress={() => router.push('/about')} />
 
       <Label style={styles.sectionLabel}>Danger zone</Label>
       <GhostButton title="Reset all data" danger onPress={confirmResetAll} />
+    </MaxWidth>
     </Screen>
   );
 }

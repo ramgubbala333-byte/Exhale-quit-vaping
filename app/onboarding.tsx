@@ -15,16 +15,36 @@ import {
   PrimaryButton,
   Screen,
 } from '@/components/ui';
-import { formatCount, formatMoney, projections } from '@/lib/calc';
+import {
+  formatCount,
+  formatDate,
+  formatMoney,
+  projections,
+  taperBudgetForWeek,
+  taperZeroDate,
+} from '@/lib/calc';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
-import type { DeviceType, Plan } from '@/types';
+import type { DeviceType, Plan, QuitApproach } from '@/types';
 
 const DEVICE_OPTIONS: { value: DeviceType; label: string; unit: string }[] = [
   { value: 'disposable', label: 'Disposables', unit: 'device' },
   { value: 'pod', label: 'Pod system', unit: 'pod' },
   { value: 'refillable', label: 'Refillable tank', unit: 'bottle of liquid' },
 ];
+
+const FLAVOUR_OPTIONS = [
+  'Mint',
+  'Menthol',
+  'Fruit ice',
+  'Berry',
+  'Tobacco',
+  'Dessert',
+  'Coffee',
+  'Unflavoured',
+];
+
+const CUT_OPTIONS = [10, 20, 25, 33, 50];
 
 const REASON_OPTIONS = [
   'My health',
@@ -38,7 +58,16 @@ const REASON_OPTIONS = [
   'A fresh start',
 ];
 
-const STEPS = ['Welcome', 'Your habit', 'Quit moment', 'Your reasons', 'Your plan'];
+const STEPS = [
+  'Welcome',
+  'Your habit',
+  'Approach',
+  'Quit moment',
+  'Your reasons',
+  'Your plan',
+];
+
+type PickerState = { which: 'quit' | 'target'; mode: 'date' | 'time' } | null;
 
 export default function Onboarding() {
   const setPlan = useStore((s) => s.setPlan);
@@ -48,29 +77,106 @@ export default function Onboarding() {
   const [puffsText, setPuffsText] = useState('');
   const [unitsText, setUnitsText] = useState('');
   const [costText, setCostText] = useState('');
+  const [nicotineText, setNicotineText] = useState('');
+  const [deviceSizeText, setDeviceSizeText] = useState('');
+  const [puffsPerDeviceText, setPuffsPerDeviceText] = useState('');
+  const [flavour, setFlavour] = useState<string | null>(null);
+  const [customFlavour, setCustomFlavour] = useState('');
+  const [approach, setApproach] = useState<QuitApproach>('now');
+  const [cutPercent, setCutPercent] = useState(25);
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
   const [quitDate, setQuitDate] = useState(() => new Date());
-  const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  const [picker, setPicker] = useState<PickerState>(null);
   const [reasons, setReasons] = useState<string[]>([]);
   const [customReason, setCustomReason] = useState('');
 
   const unitLabel =
     DEVICE_OPTIONS.find((d) => d.value === deviceType)?.unit ?? 'pod';
 
-  const draft: Plan | null = useMemo(() => {
+  const habit = useMemo(() => {
     const puffs = parseInt(puffsText, 10);
     const units = parseFloat(unitsText);
     const cost = parseFloat(costText);
     if (!(puffs > 0) || !(units > 0) || !(cost > 0)) return null;
+    return { puffs, units, cost };
+  }, [puffsText, unitsText, costText]);
+
+  /** Scratch plan used only to run the taper projection math. */
+  const taperPreview = useMemo<Plan | null>(() => {
+    if (!habit) return null;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
     return {
       deviceType,
-      puffsPerDay: puffs,
-      unitsPerWeek: units,
-      costPerUnit: cost,
+      puffsPerDay: habit.puffs,
+      unitsPerWeek: habit.units,
+      costPerUnit: habit.cost,
+      quitDate: start.toISOString(),
+      reasons: [],
+      createdAt: start.toISOString(),
+      approach: 'taper',
+      taper: {
+        weeklyCutPercent: cutPercent,
+        startDate: start.toISOString(),
+        targetQuitDate: start.toISOString(),
+      },
+    };
+  }, [habit, deviceType, cutPercent]);
+
+  const zeroDate = useMemo(
+    () => (taperPreview ? taperZeroDate(taperPreview) : null),
+    [taperPreview],
+  );
+
+  /** The quit day for a taper: the user's pick, else the projected zero day. */
+  const effectiveTarget = targetDate ?? zeroDate ?? new Date();
+
+  const draft: Plan | null = useMemo(() => {
+    if (!habit) return null;
+    const nicotine = parseFloat(nicotineText);
+    const sizeMl = parseFloat(deviceSizeText);
+    const perDevice = parseInt(puffsPerDeviceText, 10);
+    const flavourValue = (customFlavour.trim() || flavour || '').trim();
+    const base: Plan = {
+      deviceType,
+      puffsPerDay: habit.puffs,
+      unitsPerWeek: habit.units,
+      costPerUnit: habit.cost,
       quitDate: quitDate.toISOString(),
       reasons,
       createdAt: new Date().toISOString(),
+      nicotineMg: nicotine > 0 ? nicotine : undefined,
+      deviceSizeMl: sizeMl > 0 ? sizeMl : undefined,
+      puffsPerDevice: perDevice > 0 ? perDevice : undefined,
+      flavour: flavourValue ? flavourValue : undefined,
+      approach,
     };
-  }, [puffsText, unitsText, costText, deviceType, quitDate, reasons]);
+    if (approach === 'taper') {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      base.taper = {
+        weeklyCutPercent: cutPercent,
+        startDate: start.toISOString(),
+        targetQuitDate: effectiveTarget.toISOString(),
+      };
+      // Until the taper flips, the quit clock is anchored to the quit day.
+      base.quitDate = effectiveTarget.toISOString();
+    }
+    return base;
+  }, [
+    habit,
+    deviceType,
+    quitDate,
+    reasons,
+    nicotineText,
+    deviceSizeText,
+    puffsPerDeviceText,
+    flavour,
+    customFlavour,
+    approach,
+    cutPercent,
+    effectiveTarget,
+  ]);
 
   const proj = useMemo(() => (draft ? projections(draft) : null), [draft]);
 
@@ -87,17 +193,19 @@ export default function Onboarding() {
   };
 
   const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS !== 'ios') setPickerMode(null);
-    if (event.type === 'set' && selected) {
-      setQuitDate(selected);
+    if (Platform.OS !== 'ios') setPicker(null);
+    if (event.type === 'set' && selected && picker) {
+      if (picker.which === 'quit') setQuitDate(selected);
+      else setTargetDate(selected);
     }
   };
 
   const canContinue =
     step === 0 ||
-    (step === 1 && draft !== null) ||
+    (step === 1 && habit !== null) ||
     step === 2 ||
-    (step === 3 && reasons.length > 0);
+    step === 3 ||
+    (step === 4 && reasons.length > 0);
 
   const finish = () => {
     if (!draft) return;
@@ -130,14 +238,14 @@ export default function Onboarding() {
             Breathe out.{'\n'}For good.
           </Display>
           <Body size={16} color={colors.inkMuted}>
-            Exhale is a calm companion for quitting vaping. It tracks your
+            Mistless is a calm companion for quitting vaping. It tracks your
             streak, the money you keep, and the health milestones ahead, and
             it talks you through cravings when they hit. Everything stays on
             this phone. No account, no feed, no noise.
           </Body>
           <Body size={16} color={colors.inkMuted} style={{ marginTop: spacing.md }}>
-            Setting up takes a minute: your old habit, your quit moment, and
-            your reasons.
+            Setting up takes a minute: your old habit, how you want to quit,
+            and your reasons.
           </Body>
         </View>
       )}
@@ -185,15 +293,139 @@ export default function Onboarding() {
             keyboardType="decimal-pad"
             placeholder="e.g. 15"
           />
-          {step === 1 && puffsText !== '' && draft === null ? (
+          {puffsText !== '' && habit === null ? (
             <Text style={styles.errorText}>
               Fill in all three numbers with values above zero.
             </Text>
           ) : null}
+
+          <Label style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
+            The details, if you know them (optional)
+          </Label>
+          <Field
+            label="Nicotine strength (mg/mL)"
+            value={nicotineText}
+            onChangeText={setNicotineText}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 50 (most disposables), 20, 3"
+          />
+          <Field
+            label={`Liquid per ${unitLabel} (mL)`}
+            value={deviceSizeText}
+            onChangeText={setDeviceSizeText}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 13"
+          />
+          <Field
+            label={`Puffs per ${unitLabel} (if it is printed on the box)`}
+            value={puffsPerDeviceText}
+            onChangeText={setPuffsPerDeviceText}
+            keyboardType="number-pad"
+            placeholder="e.g. 5000"
+          />
+
+          <Label style={{ marginBottom: spacing.sm }}>Your usual flavour</Label>
+          <View style={styles.chipRow}>
+            {FLAVOUR_OPTIONS.map((f) => (
+              <Chip
+                key={f}
+                label={f}
+                selected={flavour === f && customFlavour.trim() === ''}
+                onPress={() => {
+                  setFlavour(f);
+                  setCustomFlavour('');
+                }}
+              />
+            ))}
+          </View>
+          <Field
+            label="Or type your flavour"
+            value={customFlavour}
+            onChangeText={setCustomFlavour}
+            placeholder="e.g. Blue razz lemonade"
+          />
         </View>
       )}
 
       {step === 2 && (
+        <View>
+          <Display size={30} style={{ marginBottom: spacing.sm }}>
+            How do you want to quit?
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+            Both roads work. Pick the one you will actually stay on.
+          </Body>
+
+          <View style={styles.chipRow}>
+            <Chip
+              label="Quit now"
+              selected={approach === 'now'}
+              onPress={() => setApproach('now')}
+            />
+            <Chip
+              label="Cut down first"
+              selected={approach === 'taper'}
+              onPress={() => setApproach('taper')}
+            />
+          </View>
+
+          {approach === 'now' && (
+            <Body color={colors.inkMuted}>
+              Cold turkey: your quit clock starts at the moment you choose
+              next, and every tracker runs from there.
+            </Body>
+          )}
+
+          {approach === 'taper' && (
+            <View>
+              <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+                A taper gives you a daily puff budget that shrinks every
+                week until it reaches zero, then the full quit begins. You
+                log puffs with one tap on the home screen.
+              </Body>
+              <Label style={{ marginBottom: spacing.sm }}>
+                Shrink the budget each week by
+              </Label>
+              <View style={styles.chipRow}>
+                {CUT_OPTIONS.map((c) => (
+                  <Chip
+                    key={c}
+                    label={`${c}%`}
+                    selected={cutPercent === c}
+                    onPress={() => {
+                      setCutPercent(c);
+                      setTargetDate(null);
+                    }}
+                  />
+                ))}
+              </View>
+              {taperPreview && (
+                <View style={styles.summaryLedger}>
+                  <SummaryLine
+                    label="This week's budget"
+                    value={`${taperBudgetForWeek(taperPreview, 0)} / day`}
+                  />
+                  <SummaryLine
+                    label="Next week"
+                    value={`${taperBudgetForWeek(taperPreview, 1)} / day`}
+                  />
+                  <SummaryLine
+                    label="Week after"
+                    value={`${taperBudgetForWeek(taperPreview, 2)} / day`}
+                  />
+                  <SummaryLine
+                    label="Budget reaches zero around"
+                    value={zeroDate ? formatDate(zeroDate.toISOString()) : '—'}
+                    last
+                  />
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      {step === 3 && approach === 'now' && (
         <View>
           <Display size={30} style={{ marginBottom: spacing.sm }}>
             When did you quit?
@@ -223,14 +455,14 @@ export default function Onboarding() {
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <PrimaryButton
                 title="Change date"
-                onPress={() => setPickerMode('date')}
+                onPress={() => setPicker({ which: 'quit', mode: 'date' })}
               />
             </View>
             <View style={{ flex: 1 }}>
               <PrimaryButton
                 title="Change time"
                 tone="amber"
-                onPress={() => setPickerMode('time')}
+                onPress={() => setPicker({ which: 'quit', mode: 'time' })}
               />
             </View>
           </View>
@@ -238,23 +470,45 @@ export default function Onboarding() {
             title="I am quitting right now"
             onPress={() => setQuitDate(new Date())}
           />
+        </View>
+      )}
 
-          {pickerMode && (
-            <DateTimePicker
-              value={quitDate}
-              mode={pickerMode}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              maximumDate={new Date()}
-              onChange={onPickerChange}
+      {step === 3 && approach === 'taper' && (
+        <View>
+          <Display size={30} style={{ marginBottom: spacing.sm }}>
+            Your quit day
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+            This is the day the budget ends and the full quit begins. It is
+            set to when your budget reaches zero; move it if you want a
+            different day. If the budget hits zero sooner, Mistless flips you
+            to the full quit automatically.
+          </Body>
+
+          <View style={styles.dateCard}>
+            <Text style={styles.dateValue}>
+              {effectiveTarget.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+
+          <PrimaryButton
+            title="Change quit day"
+            onPress={() => setPicker({ which: 'target', mode: 'date' })}
+          />
+          {targetDate && (
+            <GhostButton
+              title="Use the projected zero day"
+              onPress={() => setTargetDate(null)}
             />
-          )}
-          {Platform.OS === 'ios' && pickerMode && (
-            <GhostButton title="Done" onPress={() => setPickerMode(null)} />
           )}
         </View>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <View>
           <Display size={30} style={{ marginBottom: spacing.sm }}>
             Why are you quitting?
@@ -295,7 +549,7 @@ export default function Onboarding() {
         </View>
       )}
 
-      {step === 4 && proj && draft && (
+      {step === 5 && proj && draft && (
         <View>
           <Display size={30} style={{ marginBottom: spacing.sm }}>
             Here is what quitting returns to you
@@ -319,8 +573,15 @@ export default function Onboarding() {
             <SummaryLine
               label="Puffs skipped, per year"
               value={formatCount(proj.puffsPerYear)}
-              last
+              last={approach === 'now'}
             />
+            {approach === 'taper' && draft.taper && (
+              <SummaryLine
+                label="Your quit day"
+                value={formatDate(draft.taper.targetQuitDate)}
+                last
+              />
+            )}
           </View>
           <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
             Your reasons: {draft.reasons.join(' · ')}
@@ -328,15 +589,32 @@ export default function Onboarding() {
         </View>
       )}
 
+      {picker && (
+        <DateTimePicker
+          value={picker.which === 'quit' ? quitDate : effectiveTarget}
+          mode={picker.mode}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          maximumDate={picker.which === 'quit' ? new Date() : undefined}
+          minimumDate={picker.which === 'target' ? new Date() : undefined}
+          onChange={onPickerChange}
+        />
+      )}
+      {Platform.OS === 'ios' && picker && (
+        <GhostButton title="Done" onPress={() => setPicker(null)} />
+      )}
+
       <View style={styles.footer}>
-        {step < 4 ? (
+        {step < 5 ? (
           <PrimaryButton
             title={step === 0 ? 'Begin' : 'Continue'}
             disabled={!canContinue}
-            onPress={() => setStep((s) => Math.min(4, s + 1))}
+            onPress={() => setStep((s) => Math.min(5, s + 1))}
           />
         ) : (
-          <PrimaryButton title="Start my quit" onPress={finish} />
+          <PrimaryButton
+            title={approach === 'taper' ? 'Start my cut-down' : 'Start my quit'}
+            onPress={finish}
+          />
         )}
         {step > 0 && (
           <GhostButton

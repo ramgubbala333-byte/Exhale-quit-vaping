@@ -55,7 +55,7 @@ export async function getPlusOfferings(): Promise<PlusOffering[]> {
 export async function purchasePlus(_offeringId: string): Promise<PurchaseResult> {
   return {
     status: 'unavailable',
-    reason: 'Exhale Plus is not on sale yet. Everything in Exhale is free.',
+    reason: 'Mistless Plus is not on sale yet. Everything in Mistless is free.',
   };
 }
 

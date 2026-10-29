@@ -49,7 +49,7 @@ export async function scheduleReminders(plan: Plan): Promise<void> {
       identifier: DAILY_ID,
       content: {
         title: 'Morning check-in',
-        body: 'Another day nicotine-free. Open Exhale to see how far you have come.',
+        body: 'Another day nicotine-free. Open Mistless to see how far you have come.',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,

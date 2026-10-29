@@ -1,6 +1,6 @@
 {
   "main": "expo-router/entry",
-  "name": "exhale-quit-vaping",
+  "name": "mistless",
   "private": true,
   "scripts": {
     "android": "expo start --android",

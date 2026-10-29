@@ -10,7 +10,7 @@ const PLUS_FEATURES = [
   'Deeper craving analytics: triggers, places, and patterns over time',
   'Personalised milestone plans and custom reminders',
   'Guided audio sessions for the hardest moments of the day',
-  'Data export, so your record is always yours to keep',
+  'Long-range pattern reports across months and years',
 ];
 
 /**
@@ -24,10 +24,10 @@ export default function Paywall() {
     <Screen>
       <Label color={colors.amber}>Coming soon</Label>
       <Display size={34} style={{ marginTop: spacing.xs }}>
-        Exhale Plus
+        Mistless Plus
       </Display>
       <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
-        Exhale is completely free right now, and every feature in the app is
+        Mistless is completely free right now, and every feature in the app is
         already yours. Plus is a future layer for people who want to go
         deeper. Nothing is on sale today and nothing will ever be charged
         from this screen in this version.

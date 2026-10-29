@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import FlavourPicker from '@/components/FlavourPicker';
+import IfThenPlanForm from '@/components/IfThenPlanForm';
 import {
   Body,
   Chip,
@@ -30,8 +31,9 @@ import { planFlavours } from '@/lib/flavours';
 import {
   cancelReminders,
   ensureNotificationPermission,
-  scheduleReminders,
+  refreshAllNotifications,
 } from '@/lib/notifications';
+import { MAX_CRAVING_PLANS } from '@/lib/plans';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
 import type { DeviceType } from '@/types';
@@ -50,6 +52,13 @@ export default function Settings() {
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
   const savingsGoal = useStore((s) => s.savingsGoal);
   const setSavingsGoal = useStore((s) => s.setSavingsGoal);
+  const cravingPlans = useStore((s) => s.cravingPlans);
+  const addCravingPlan = useStore((s) => s.addCravingPlan);
+  const removeCravingPlan = useStore((s) => s.removeCravingPlan);
+  const supportName = useStore((s) => s.supportName);
+  const setSupportName = useStore((s) => s.setSupportName);
+  const notificationPrefs = useStore((s) => s.notificationPrefs);
+  const setNotificationPrefs = useStore((s) => s.setNotificationPrefs);
 
   const [puffsText, setPuffsText] = useState<string | null>(null);
   const [unitsText, setUnitsText] = useState<string | null>(null);
@@ -62,6 +71,9 @@ export default function Settings() {
   const [goalSaved, setGoalSaved] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [saved, setSaved] = useState(false);
+  const [supportText, setSupportText] = useState<string | null>(null);
+  const [supportSaved, setSupportSaved] = useState(false);
+  const [reminderPickerOpen, setReminderPickerOpen] = useState(false);
 
   if (!plan) return null;
 
@@ -110,10 +122,9 @@ export default function Settings() {
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    // Milestone alerts depend on the quit date, not the numbers, but a
-    // re-save is a cheap moment to keep schedules in sync.
+    // A re-save is a cheap moment to keep every schedule in sync.
     if (notificationsEnabled) {
-      scheduleReminders({ ...plan, puffsPerDay: p, unitsPerWeek: u, costPerUnit: c });
+      refreshAllNotifications();
     }
   };
 
@@ -148,6 +159,11 @@ export default function Settings() {
       taperPuffs: s.taperPuffs,
       savingsGoal: s.savingsGoal,
       notificationsEnabled: s.notificationsEnabled,
+      cravingPlans: s.cravingPlans,
+      missionLog: s.missionLog,
+      supportName: s.supportName,
+      rescueCount: s.rescueCount,
+      notificationPrefs: s.notificationPrefs,
     };
     try {
       await Share.share({
@@ -165,9 +181,8 @@ export default function Settings() {
   const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS !== 'ios') setPickerMode(null);
     if (event.type === 'set' && selected) {
-      const next = { ...plan, quitDate: selected.toISOString() };
-      updatePlan({ quitDate: next.quitDate });
-      if (notificationsEnabled) scheduleReminders(next);
+      updatePlan({ quitDate: selected.toISOString() });
+      if (notificationsEnabled) refreshAllNotifications();
     }
   };
 
@@ -182,10 +197,38 @@ export default function Settings() {
         return;
       }
       setNotificationsEnabled(true);
-      await scheduleReminders(plan);
+      await refreshAllNotifications();
     } else {
       setNotificationsEnabled(false);
       await cancelReminders();
+    }
+  };
+
+  const saveSupport = () => {
+    setSupportName(supportText ?? supportName);
+    setSupportSaved(true);
+    setTimeout(() => setSupportSaved(false), 2000);
+  };
+
+  const togglePref = (
+    key: 'dangerWindow' | 'missionReminder' | 'savingsSweep',
+    value: boolean,
+  ) => {
+    setNotificationPrefs({ [key]: value });
+    if (notificationsEnabled) refreshAllNotifications();
+  };
+
+  const onReminderTimeChange = (
+    event: DateTimePickerEvent,
+    selected?: Date,
+  ) => {
+    if (Platform.OS !== 'ios') setReminderPickerOpen(false);
+    if (event.type === 'set' && selected) {
+      setNotificationPrefs({
+        missionReminderHour: selected.getHours(),
+        missionReminderMinute: selected.getMinutes(),
+      });
+      if (notificationsEnabled) refreshAllNotifications();
     }
   };
 
@@ -303,6 +346,48 @@ export default function Settings() {
         />
       )}
 
+      <Label style={styles.sectionLabel}>Your craving plans</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+        If-then plans, decided in a calm moment for the hard ones. Up to{' '}
+        {MAX_CRAVING_PLANS}. They show up in SOS whenever you need them.
+      </Body>
+      {cravingPlans.map((p) => (
+        <View key={p.id} style={styles.planManageRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.planManageText}>
+              If {p.trigger.toLowerCase()}, then I will {p.action.toLowerCase()}.
+            </Text>
+          </View>
+          <GhostButton
+            title="Remove"
+            danger
+            onPress={() => removeCravingPlan(p.id)}
+          />
+        </View>
+      ))}
+      {cravingPlans.length < MAX_CRAVING_PLANS && (
+        <IfThenPlanForm
+          onSubmit={(trigger, action) => addCravingPlan(trigger, action)}
+        />
+      )}
+
+      <Label style={styles.sectionLabel}>Your person</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+        One name for the SOS "Message my person" button. Mistless never
+        contacts them on its own. The button only opens your messages app
+        with a note ready to send.
+      </Body>
+      <Field
+        label="Their name"
+        value={supportText ?? supportName ?? ''}
+        onChangeText={setSupportText}
+        placeholder="e.g. Alex"
+      />
+      <PrimaryButton
+        title={supportSaved ? 'Saved' : 'Save name'}
+        onPress={saveSupport}
+      />
+
       <Label style={styles.sectionLabel}>Your data</Label>
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         Everything lives on this phone. Export a copy of it all as JSON
@@ -359,6 +444,90 @@ export default function Settings() {
         />
       </View>
 
+      <Body color={colors.inkMuted} style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
+        Three more, tailored to your own patterns. They only fire while the
+        master switch above is on.
+      </Body>
+      <View style={[styles.toggleRow, { marginBottom: spacing.sm }]}>
+        <View style={{ flex: 1, marginRight: spacing.md }}>
+          <Text style={styles.toggleTitle}>Danger window heads-up</Text>
+          <Text style={styles.toggleDetail}>
+            Thirty minutes before your usual craving hour, once Mistless has
+            seen one in your logs.
+          </Text>
+        </View>
+        <Switch
+          value={notificationPrefs.dangerWindow}
+          onValueChange={(v) => togglePref('dangerWindow', v)}
+          trackColor={{ true: colors.pine, false: colors.lineStrong }}
+          thumbColor={colors.surface}
+        />
+      </View>
+      <View style={[styles.toggleRow, { marginBottom: spacing.sm }]}>
+        <View style={{ flex: 1, marginRight: spacing.md }}>
+          <Text style={styles.toggleTitle}>Morning mission reminder</Text>
+          <Text style={styles.toggleDetail}>
+            Today's one small mission, at{' '}
+            {notificationPrefs.missionReminderHour % 12 === 0
+              ? 12
+              : notificationPrefs.missionReminderHour % 12}
+            :{String(notificationPrefs.missionReminderMinute).padStart(2, '0')}{' '}
+            {notificationPrefs.missionReminderHour < 12 ? 'AM' : 'PM'}.
+          </Text>
+        </View>
+        <Switch
+          value={notificationPrefs.missionReminder}
+          onValueChange={(v) => togglePref('missionReminder', v)}
+          trackColor={{ true: colors.pine, false: colors.lineStrong }}
+          thumbColor={colors.surface}
+        />
+      </View>
+      {notificationPrefs.missionReminder && (
+        <>
+          <GhostButton
+            title="Change mission reminder time"
+            onPress={() => setReminderPickerOpen(true)}
+          />
+          {reminderPickerOpen && (
+            <DateTimePicker
+              value={
+                new Date(
+                  2000,
+                  0,
+                  1,
+                  notificationPrefs.missionReminderHour,
+                  notificationPrefs.missionReminderMinute,
+                )
+              }
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onReminderTimeChange}
+            />
+          )}
+          {Platform.OS === 'ios' && reminderPickerOpen && (
+            <GhostButton
+              title="Done"
+              onPress={() => setReminderPickerOpen(false)}
+            />
+          )}
+        </>
+      )}
+      <View style={styles.toggleRow}>
+        <View style={{ flex: 1, marginRight: spacing.md }}>
+          <Text style={styles.toggleTitle}>Friday savings sweep</Text>
+          <Text style={styles.toggleDetail}>
+            Friday at 6 PM: what you kept this week, and a nudge to move it
+            somewhere it works for you.
+          </Text>
+        </View>
+        <Switch
+          value={notificationPrefs.savingsSweep}
+          onValueChange={(v) => togglePref('savingsSweep', v)}
+          trackColor={{ true: colors.pine, false: colors.lineStrong }}
+          thumbColor={colors.surface}
+        />
+      </View>
+
       <Label style={styles.sectionLabel}>Mistless Plus</Label>
       <GhostButton
         title="See what Plus will include"
@@ -366,6 +535,10 @@ export default function Settings() {
       />
 
       <Label style={styles.sectionLabel}>About</Label>
+      <GhostButton
+        title="My plan reveal"
+        onPress={() => router.push('/reveal?from=settings')}
+      />
       <GhostButton title="About Mistless" onPress={() => router.push('/about')} />
 
       <Label style={styles.sectionLabel}>Danger zone</Label>
@@ -399,5 +572,22 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.inkMuted,
     marginTop: 3,
+  },
+  planManageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  planManageText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.ink,
   },
 });

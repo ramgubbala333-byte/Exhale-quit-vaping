@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import FlavourPicker from '@/components/FlavourPicker';
+import IfThenPlanForm from '@/components/IfThenPlanForm';
+import MistVeil from '@/components/MistVeil';
 import {
   Body,
   Chip,
@@ -54,6 +56,7 @@ const STEPS = [
   'Approach',
   'Quit moment',
   'Your reasons',
+  'Craving plans',
   'Your plan',
 ];
 
@@ -61,6 +64,7 @@ type PickerState = { which: 'quit' | 'target'; mode: 'date' | 'time' } | null;
 
 export default function Onboarding() {
   const setPlan = useStore((s) => s.setPlan);
+  const addCravingPlan = useStore((s) => s.addCravingPlan);
 
   const [step, setStep] = useState(0);
   const [deviceType, setDeviceType] = useState<DeviceType>('disposable');
@@ -79,6 +83,9 @@ export default function Onboarding() {
   const [picker, setPicker] = useState<PickerState>(null);
   const [reasons, setReasons] = useState<string[]>([]);
   const [customReason, setCustomReason] = useState('');
+  const [planDrafts, setPlanDrafts] = useState<
+    { trigger: string; action: string }[]
+  >([]);
 
   const unitLabel =
     DEVICE_OPTIONS.find((d) => d.value === deviceType)?.unit ?? 'pod';
@@ -201,11 +208,7 @@ export default function Onboarding() {
   };
 
   const canContinue =
-    step === 0 ||
-    (step === 1 && habit !== null) ||
-    step === 2 ||
-    step === 3 ||
-    (step === 4 && reasons.length > 0);
+    step === 1 ? habit !== null : step === 4 ? reasons.length > 0 : true;
 
   const finish = () => {
     if (!draft) return;
@@ -214,10 +217,13 @@ export default function Onboarding() {
       return;
     }
     setPlan(draft);
-    router.replace('/(tabs)');
+    planDrafts.forEach((p) => addCravingPlan(p.trigger, p.action));
+    router.replace('/reveal');
   };
 
   return (
+    <View style={{ flex: 1 }}>
+    <MistVeil progress={step / (STEPS.length - 1)} />
     <Screen>
       <View style={styles.progressRow}>
         {STEPS.map((s, i) => (
@@ -543,7 +549,60 @@ export default function Onboarding() {
         </View>
       )}
 
-      {step === 5 && proj && draft && (
+      {step === 5 && (
+        <View>
+          <Display size={30} style={{ marginBottom: spacing.sm }}>
+            Make your if-then plans
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+            Cravings are not random; they have favourite moments. A plan
+            made now, while you are calm, is the version of you that shows
+            up later. Research on if-then planning is unusually clear:
+            one or two specific plans beat five vague intentions. Build
+            up to three.
+          </Body>
+
+          {planDrafts.map((p, i) => (
+            <View key={i} style={styles.planRow}>
+              <Text style={styles.planText}>
+                If {p.trigger.toLowerCase()}, then I will{' '}
+                {p.action.charAt(0).toLowerCase() + p.action.slice(1)}.
+              </Text>
+              <GhostButton
+                title="Remove"
+                onPress={() =>
+                  setPlanDrafts((prev) => prev.filter((_, j) => j !== i))
+                }
+              />
+            </View>
+          ))}
+
+          {planDrafts.length < 3 ? (
+            <IfThenPlanForm
+              submitLabel={
+                planDrafts.length === 0 ? 'Save my first plan' : 'Add this plan'
+              }
+              onSubmit={(trigger, action) =>
+                setPlanDrafts((prev) => [...prev, { trigger, action }])
+              }
+            />
+          ) : (
+            <Body color={colors.inkMuted}>
+              Three plans is the full set. They will be waiting in SOS,
+              and you can edit them any time in Settings.
+            </Body>
+          )}
+
+          {planDrafts.length === 0 && (
+            <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
+              No plans yet is allowed, but even one makes the first hard
+              moment easier. You can also add them later in Settings.
+            </Body>
+          )}
+        </View>
+      )}
+
+      {step === 6 && proj && draft && (
         <View>
           <Display size={30} style={{ marginBottom: spacing.sm }}>
             Here is what quitting returns to you
@@ -585,6 +644,11 @@ export default function Onboarding() {
               The flavours you are leaving behind: {draft.flavours.join(' · ')}
             </Body>
           )}
+          {planDrafts.length > 0 && (
+            <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+              Your if-then plans: {planDrafts.map((p) => p.trigger).join(' · ')}
+            </Body>
+          )}
         </View>
       )}
 
@@ -603,11 +667,11 @@ export default function Onboarding() {
       )}
 
       <View style={styles.footer}>
-        {step < 5 ? (
+        {step < 6 ? (
           <PrimaryButton
             title={step === 0 ? 'Begin' : 'Continue'}
             disabled={!canContinue}
-            onPress={() => setStep((s) => Math.min(5, s + 1))}
+            onPress={() => setStep((s) => Math.min(6, s + 1))}
           />
         ) : (
           <PrimaryButton
@@ -623,6 +687,7 @@ export default function Onboarding() {
         )}
       </View>
     </Screen>
+    </View>
   );
 }
 
@@ -709,4 +774,19 @@ const styles = StyleSheet.create({
     color: colors.pine,
   },
   footer: { marginTop: spacing.xl },
+  planRow: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  planText: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    lineHeight: 26,
+    color: colors.pineDeep,
+  },
 });

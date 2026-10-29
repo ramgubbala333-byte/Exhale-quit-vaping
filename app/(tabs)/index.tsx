@@ -1,7 +1,8 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import CountUpMoney from '@/components/CountUpMoney';
 import MaxWidth from '@/components/MaxWidth';
 import MilestoneCelebration from '@/components/MilestoneCelebration';
 import QuitTimer from '@/components/QuitTimer';
@@ -11,6 +12,7 @@ import WeekDots from '@/components/WeekDots';
 import {
   Body,
   Display,
+  GhostButton,
   Label,
   PrimaryButton,
   Screen,
@@ -22,8 +24,8 @@ import {
   elapsedSeconds,
   formatCount,
   formatDurationShort,
-  formatMoneyExact,
   isTaperActive,
+  lifetimeFreeSeconds,
   lifetimeMoneySaved,
   moneySaved,
   puffsAvoided,
@@ -33,6 +35,10 @@ import {
   unitsAvoided,
 } from '@/lib/calc';
 import { dailyLine } from '@/lib/dailyLines';
+import { haptics } from '@/lib/haptics';
+import { localDateKey, missionForDate } from '@/lib/missions';
+import { refreshAllNotifications } from '@/lib/notifications';
+import { identityVotes } from '@/lib/votes';
 import type { Plan } from '@/types';
 import {
   milestoneStates,
@@ -53,6 +59,8 @@ export default function Home() {
   const seedCelebrations = useStore((s) => s.seedCelebrations);
   const taperPuffs = useStore((s) => s.taperPuffs);
   const logPuff = useStore((s) => s.logPuff);
+  const missionLog = useStore((s) => s.missionLog);
+  const setMissionStatus = useStore((s) => s.setMissionStatus);
   const advanceTaperIfReady = useStore((s) => s.advanceTaperIfReady);
   const savingsGoal = useStore((s) => s.savingsGoal);
   const bankedMoney = useStore((s) => s.lifetimeMoneyBanked);
@@ -67,11 +75,25 @@ export default function Home() {
   };
   const [now, setNow] = useState(() => new Date());
   const [celebration, setCelebration] = useState<MilestoneState | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
 
   // Refresh the derived numbers once a minute (the timer ticks itself).
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);
+  }, []);
+
+  // Replay the kept-money count-up whenever Home regains focus.
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((t) => t + 1);
+    }, []),
+  );
+
+  // Keep the notification schedule fresh (danger window, sweep amount,
+  // today's mission) whenever Home mounts. Best-effort and silent.
+  useEffect(() => {
+    refreshAllNotifications();
   }, []);
 
   // Milestone celebrations: when a milestone is newly reached while the
@@ -132,6 +154,21 @@ export default function Home() {
   const streakSeconds = elapsedSeconds(plan, now);
   const taperActive = isTaperActive(plan, now);
 
+  const todayKey = localDateKey(now);
+  const mission = missionForDate(now);
+  const missionRecord = missionLog.find((m) => m.date === todayKey);
+  const missionsDone = missionLog.filter((m) => m.status === 'done').length;
+  const votes = identityVotes({
+    resistedCount: resisted,
+    missionsDone,
+    lifetimeFreeSeconds: lifetimeFreeSeconds(plan, banked, now),
+  });
+
+  const onLogPuffWithHaptic = () => {
+    haptics.commit();
+    logPuff();
+  };
+
   return (
     <Screen>
       <MaxWidth>
@@ -156,7 +193,7 @@ export default function Home() {
               );
             }).length
           }
-          onLogPuff={logPuff}
+          onLogPuff={onLogPuffWithHaptic}
         />
       ) : (
         <>
@@ -169,9 +206,7 @@ export default function Home() {
 
           <View style={styles.savedBlock}>
             <Label color={colors.amber}>Money kept so far</Label>
-            <Display size={44} color={colors.pineDeep}>
-              {formatMoneyExact(saved)}
-            </Display>
+            <CountUpMoney value={saved} focusTick={focusTick} />
           </View>
 
           <View style={styles.ledger}>
@@ -194,6 +229,17 @@ export default function Home() {
             />
           </View>
 
+          <View style={styles.votesRow}>
+            <View style={styles.votesPill}>
+              <Text style={styles.votesPillText}>
+                {formatCount(votes.total)} vote{votes.total === 1 ? '' : 's'}
+              </Text>
+            </View>
+            <Text style={styles.votesCaption}>
+              for the person you are becoming
+            </Text>
+          </View>
+
           <WeekDots plan={plan} cravings={cravings} journal={journal} now={now} />
 
           <RecoveryRings plan={plan} now={now} />
@@ -205,6 +251,42 @@ export default function Home() {
           <SavingsGoalStrip goal={savingsGoal} moneyKept={lifetimeSaved} />
         </Pressable>
       )}
+
+      <View style={styles.missionCard}>
+        <Label color={colors.amber}>Today's mission</Label>
+        <Text style={styles.missionTitle}>{mission.title}</Text>
+        <Text style={styles.missionDetail}>{mission.detail}</Text>
+        {missionRecord?.status === 'done' ? (
+          <Text style={styles.missionState}>
+            Done. That is another vote cast, and the day is only partway
+            through.
+          </Text>
+        ) : missionRecord?.status === 'skipped' ? (
+          <Text style={styles.missionState}>
+            Skipped, no penalty attached. Tomorrow brings a new one.
+          </Text>
+        ) : (
+          <View style={styles.missionButtons}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <PrimaryButton
+                title="Done"
+                haptic="commit"
+                onPress={() =>
+                  setMissionStatus(todayKey, mission.id, 'done')
+                }
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <GhostButton
+                title="Skip today"
+                onPress={() =>
+                  setMissionStatus(todayKey, mission.id, 'skipped')
+                }
+              />
+            </View>
+          </View>
+        )}
+      </View>
 
       {!taperActive && next && (
         <Pressable
@@ -387,6 +469,61 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.pine,
     borderRadius: 3,
+  },
+  votesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  votesPill: {
+    backgroundColor: colors.pine,
+    borderRadius: radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginRight: spacing.sm,
+  },
+  votesPillText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.amberBright,
+  },
+  votesCaption: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkMuted,
+    flex: 1,
+  },
+  missionCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.xl,
+  },
+  missionTitle: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    color: colors.pineDeep,
+    marginTop: spacing.xs,
+  },
+  missionDetail: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.inkMuted,
+    marginTop: 4,
+  },
+  missionState: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.pine,
+    marginTop: spacing.md,
+  },
+  missionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
   },
   sosButton: {
     backgroundColor: colors.amberBright,

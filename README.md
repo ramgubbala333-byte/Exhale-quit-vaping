@@ -161,6 +161,79 @@ so numbers agree on every screen and nothing can drift out of sync.
   SOS ahead of it. Below five, the card is an honest placeholder that
   counts progress instead of inventing a pattern.
 
+## v1.3 research pass: engagement systems
+
+Built from an evidence review of what actually moves quit outcomes
+(`~/workspace/research_notes/mistless-engagement-ui-research-20261029-2128/report.md`).
+Every system is local; there is no backend.
+
+- **If-then craving plans** (`src/lib/plans.ts`, onboarding step +
+  Settings manager + SOS). The user pre-decides up to 3 plans: a
+  trigger ("After meals", "Stress", "Driving", ...) and a response
+  ("Chew gum", "Walk for 5 minutes", "Open SOS and ride the wave").
+  Implementation intentions carry a medium-to-large effect on goal
+  attainment in meta-analysis (d ≈ 0.65). In SOS the plans are listed,
+  and tagging a craving's trigger surfaces the matching plan first.
+- **Urge-surf wave** (SOS tool). A 5-minute timer drawn as a wave that
+  rises and falls with progress, intensity rated 1–10 before and
+  after, with ACT-style acceptance copy ("Notice it. Name it. Let it
+  peak and pass."). Acceptance-based urge coping outperformed a
+  leading control app in the iCanQuit RCT (OR ≈ 1.49). The log records
+  both intensities and the trigger.
+- **Lapse rescue, not reset** (SOS slip flow). Three steps: normalize
+  (a slip is data, not failure), show everything still banked
+  (lifetime money, puffs, resisted cravings, free days across all
+  attempts), then one recommit action: an if-then plan for the moment
+  that got them, and "Resume my quit". Framing follows the Abstinence
+  Violation Effect literature: shame spirals cause relapses, banked
+  progress prevents them. Rescues are counted in Stats as
+  "Comebacks: N", a point of pride. Lifetime counters never zero.
+- **One daily mission** (`src/lib/missions.ts`). A bank of 30 short
+  missions, picked deterministically by date. Home shows today's card
+  with Done/Skip; skipping carries no guilt copy. Daily-mission
+  engagement was the strongest behavioural signal in the Smoke Free
+  trial (OR ≈ 1.90 for abstinence among mission users).
+- **Endowed-progress plan reveal** (`app/reveal.tsx`). After
+  onboarding: "Your plan is already moving", with the three steps the
+  user just completed shown as numbered 01/02/03 editorial rows, then
+  projections computed from their own inputs only (kept money at 1
+  week / 1 month / 6 months / 1 year, puffs avoided at 1 year, first
+  milestone named). Reachable again from Settings.
+- **Identity votes** (`src/lib/votes.ts`). +1 per resisted craving,
+  +1 per completed mission, +1 per full vape-free day. Votes only ever
+  accumulate, across attempts. Stats explains: "Every vote is evidence
+  for the person you are becoming." Home shows a compact votes pill.
+- **Text-a-human** (SOS). An optional support name in Settings; the
+  SOS button opens the native SMS/Share composer with an honest
+  prewritten message. Mistless never contacts anyone itself.
+- **Journal bookends** (`src/lib/prompts.ts`). Morning intention
+  (before noon) and evening reflection (after 6 PM) prompt cards in
+  the Journal, 12 rotating Stoic-style prompts per slot, opening the
+  note editor prefilled. Outside their hours they rest as quiet
+  "returns tomorrow" rows.
+- **Tailored notifications** (all local, all individually toggleable
+  in Settings): a heads-up 30 minutes before the user's known peak
+  craving hour (only when forecast data exists), a morning mission
+  reminder at a user-chosen time (default 9:00), and a Friday 6 PM
+  savings-sweep prompt carrying that week's kept amount. Tailored
+  message support is the digital pattern with a real effect (texting
+  programmes, RR ≈ 1.54); these are its local-first equivalent.
+- **Motion and haptics** (`src/lib/haptics.ts`,
+  `src/components/CountUpMoney.tsx`, `MistVeil`). Kept money counts up
+  over ~600ms on Home focus, never overshooting. A small haptic
+  vocabulary: tick on chip select, tap on primary buttons, commit thud
+  on "Log a puff" and mission Done, success pattern on milestone
+  reached and craving resisted; all calls are platform-guarded. The
+  milestone celebration lands as a seal-stamp (scale 1.6→1 spring, one
+  pine ring pulse, under 1.2s, no confetti). Onboarding carries a
+  mist-clearing veil: soft off-white SVG bands at the top that thin
+  step by step and are gone by the reveal. Reduce-motion (via
+  AccessibilityInfo) settles all of it instantly.
+
+Claim discipline throughout: no fabricated social proof, no aggregate
+user stats, no medical efficacy claims. Projections are arithmetic on
+the user's own numbers and are labelled as such.
+
 ## Product policy: the core is never paywalled
 
 The SOS toolkit and the core quit counter are **free forever** and must
@@ -205,14 +278,28 @@ Mistless is fully free in v1 by the owner's requirement. The paywall
 screen exists for design purposes and shows a "coming soon" state;
 nothing can be purchased.
 
+The paywall's presentation was redesigned in v1.3 as conversion prep
+(StoryShort-style anatomy, minus the pressure): a Monthly/Yearly
+toggle where Yearly anchors against a struck-through monthly price
+and shows the billed-yearly total; placeholder prices as constants at
+the top of `app/paywall.tsx` (Monthly $9.99, Yearly $39.99, Lifetime
+$59.99, from category research); an outcome block that translates the
+tiers into the user's own numbers ("at your pace, you keep about $X a
+year"), computed from their plan and logs, never invented averages;
+the 2–3 headline Plus capabilities bolded first; a separate
+"Free forever" block naming the counter, SOS, rescue and health
+timeline as never-paywalled; and the line "Cancel anytime. Keep your
+data either way." No user counts, no testimonials, no countdowns, no
+pressure mechanics.
+
 To enable RevenueCat later:
 
 1. `npx expo install react-native-purchases`
 2. Add the public RevenueCat SDK keys to app config and pass them where
    `configurePurchases()` is documented in `src/services/revenuecat.ts`.
 3. Implement the stub functions in that one file (`getOfferings`,
-   `purchasePackage`, `getCustomerInfo`). The paywall screen already reads
-   its tiers through `getPlusOfferings()`, so no UI changes are needed.
+   `purchasePackage`, `getCustomerInfo`), then point the paywall's
+   price constants at the live offerings.
 
 ## Verification (latest pass)
 
@@ -224,3 +311,8 @@ To enable RevenueCat later:
   recovery rings, milestone celebration, animated jar fill, daily line,
   week dots, craving forecast, and warmer empty states all included in
   the two checks above
+- v1.3 research pass: if-then plans, urge-surf wave, lapse rescue,
+  daily missions, plan reveal, identity votes, text-a-human, journal
+  bookends, tailored notifications, haptics + motion, mist-clearing
+  onboarding, About FAQ, and the dormant paywall redesign, all covered
+  by the same two checks

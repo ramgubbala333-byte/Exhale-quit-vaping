@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Linking,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -10,6 +12,7 @@ import {
 } from 'react-native';
 
 import BreathingCircle, { BREATH_PATTERNS } from '@/components/BreathingCircle';
+import IfThenPlanForm from '@/components/IfThenPlanForm';
 import {
   Body,
   Chip,
@@ -18,18 +21,25 @@ import {
   Label,
   PrimaryButton,
   Screen,
+  StatRow,
 } from '@/components/ui';
+import UrgeSurfWave, { type WaveResult } from '@/components/UrgeSurfWave';
 import {
+  formatCount,
   formatMoneyExact,
+  lifetimeFreeSeconds,
   lifetimeMoneySaved,
+  lifetimePuffsAvoided,
   savingsGoalPercent,
 } from '@/lib/calc';
+import { haptics } from '@/lib/haptics';
+import { planForTrigger, TRIGGERS } from '@/lib/plans';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 /**
  * PRODUCT POLICY: the SOS toolkit and the core quit counter are free
- * forever and must NEVER be placed behind the Exhale Plus paywall.
+ * forever and must NEVER be placed behind the Mistless Plus paywall.
  * Craving support is the heart of the app; charging for it in the moment
  * someone is struggling would be both wrong and self-defeating. Plus is
  * for depth (analytics, plans, audio), never for rescue.
@@ -46,10 +56,16 @@ const BASE_LINES = [
   'Your future self is already glad you stayed.',
 ];
 
-type Tool = 'menu' | 'breathing' | 'urge' | 'pledge' | 'why';
+type Tool = 'menu' | 'breathing' | 'urge' | 'pledge' | 'why' | 'wave';
 type FlowState = 'active' | 'resisted' | 'slipped';
+type Outcome = 'resisted' | 'slipped';
 
 const TOOLS: { id: Exclude<Tool, 'menu'>; title: string; detail: string }[] = [
+  {
+    id: 'wave',
+    title: 'Ride the wave',
+    detail: 'Five minutes of urge-surfing: rate it, watch it crest and fall, rate it again.',
+  },
   {
     id: 'breathing',
     title: 'Breathing',
@@ -83,6 +99,10 @@ export default function Sos() {
   const logCraving = useStore((s) => s.logCraving);
   const resetQuitDate = useStore((s) => s.resetQuitDate);
   const savingsGoal = useStore((s) => s.savingsGoal);
+  const cravingPlans = useStore((s) => s.cravingPlans);
+  const addCravingPlan = useStore((s) => s.addCravingPlan);
+  const supportName = useStore((s) => s.supportName);
+  const cravings = useStore((s) => s.cravings);
   const bankedMoney = useStore((s) => s.lifetimeMoneyBanked);
   const bankedPuffs = useStore((s) => s.lifetimePuffsBanked);
   const bankedUnits = useStore((s) => s.lifetimeUnitsBanked);
@@ -94,6 +114,20 @@ export default function Sos() {
   const [patternId, setPatternId] = useState(BREATH_PATTERNS[0].id);
   const [remaining, setRemaining] = useState(URGE_SECONDS);
   const startedAtRef = useRef(Date.now());
+
+  // Trigger tagging: after an outcome, before the log is written.
+  const [tagging, setTagging] = useState<{
+    outcome: Outcome;
+    wave?: WaveResult;
+  } | null>(null);
+  const [tagTrigger, setTagTrigger] = useState<string | null>(null);
+
+  // Lapse rescue steps (shown when flow === 'slipped').
+  const [rescueStep, setRescueStep] = useState(0);
+  const [rescuePlan, setRescuePlan] = useState<{
+    trigger: string;
+    action: string;
+  } | null>(null);
 
   const lines = useMemo(() => {
     const reasonLines = (plan?.reasons ?? []).map(
@@ -113,7 +147,7 @@ export default function Sos() {
   }, [tool]);
 
   useEffect(() => {
-    if (flow !== 'active' || !timerRunning) return;
+    if (flow !== 'active' || !timerRunning || tagging) return;
     const countdown = setInterval(() => {
       setRemaining((r) => Math.max(0, r - 1));
     }, 1000);
@@ -124,42 +158,86 @@ export default function Sos() {
       clearInterval(countdown);
       clearInterval(rotator);
     };
-  }, [flow, timerRunning, tool, lines.length]);
+  }, [flow, timerRunning, tool, lines.length, tagging]);
 
   const sessionSeconds = () =>
     Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
-  const onResisted = () => {
-    logCraving('resisted', sessionSeconds());
-    setFlow('resisted');
+  /** Outcome chosen: move to the trigger tag before writing the log. */
+  const beginLog = (outcome: Outcome, wave?: WaveResult) => {
+    setTagTrigger(null);
+    setTagging({ outcome, wave });
   };
 
-  const onSlipped = () => {
-    logCraving('slipped', sessionSeconds());
-    setFlow('slipped');
+  const confirmLog = (withTrigger: boolean) => {
+    if (!tagging) return;
+    const { outcome, wave } = tagging;
+    logCraving(outcome, wave ? wave.durationSec : sessionSeconds(), {
+      trigger: withTrigger ? (tagTrigger ?? undefined) : undefined,
+      intensityBefore: wave?.intensityBefore,
+      intensityAfter: wave?.intensityAfter,
+    });
+    if (outcome === 'resisted') {
+      haptics.success();
+      setFlow('resisted');
+    } else {
+      haptics.commit();
+      setRescueStep(0);
+      setRescuePlan(null);
+      setFlow('slipped');
+    }
+    setTagging(null);
   };
 
-  const onResetAndClose = () => {
-    resetQuitDate();
+  const onResisted = () => beginLog('resisted');
+  const onSlipped = () => beginLog('slipped');
+
+  const onWaveOutcome = (outcome: Outcome, result: WaveResult) =>
+    beginLog(outcome, result);
+
+  const messageMyPerson = async () => {
+    const message =
+      'Craving hard right now. Can you keep me company for five minutes? - sent from Mistless';
+    try {
+      const url = `sms:?&body=${encodeURIComponent(message)}`;
+      const can = await Linking.canOpenURL(url);
+      if (can) {
+        await Linking.openURL(url);
+        return;
+      }
+      throw new Error('sms unavailable');
+    } catch {
+      try {
+        await Share.share({ message });
+      } catch {
+        // Composer unavailable; nothing else to do from here.
+      }
+    }
+  };
+
+  const finishRescue = (withPlan: boolean) => {
+    if (withPlan && rescuePlan) {
+      addCravingPlan(rescuePlan.trigger, rescuePlan.action);
+    }
+    resetQuitDate({ rescue: true });
     router.back();
   };
 
   const pattern =
     BREATH_PATTERNS.find((p) => p.id === patternId) ?? BREATH_PATTERNS[0];
 
-  const lifetimeSaved = plan
-    ? lifetimeMoneySaved(
-        plan,
-        {
-          money: bankedMoney,
-          puffs: bankedPuffs,
-          units: bankedUnits,
-          freeSeconds: bankedFreeSeconds,
-        },
-        new Date(),
-      )
-    : 0;
+  const banked = {
+    money: bankedMoney,
+    puffs: bankedPuffs,
+    units: bankedUnits,
+    freeSeconds: bankedFreeSeconds,
+  };
+  const lifetimeSaved = plan ? lifetimeMoneySaved(plan, banked, new Date()) : 0;
+  const lifetimePuffs = plan ? lifetimePuffsAvoided(plan, banked, new Date()) : 0;
+  const lifetimeFree = plan ? lifetimeFreeSeconds(plan, banked, new Date()) : 0;
+  const resistedTotal = cravings.filter((c) => c.outcome === 'resisted').length;
   const goalPercent = savingsGoalPercent(savingsGoal, lifetimeSaved);
+  const matchedPlan = planForTrigger(cravingPlans, tagTrigger);
 
   const outcomeButtons = (
     <View style={{ marginTop: spacing.xl }}>
@@ -171,7 +249,54 @@ export default function Sos() {
 
   return (
     <Screen>
-      {flow === 'active' && tool === 'menu' && (
+      {tagging && (
+        <View>
+          <Label color={colors.amber}>One quick thing</Label>
+          <Display size={30} style={{ marginTop: spacing.xs }}>
+            What set it off?
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+            Tagging the trigger is how your danger window gets smarter.
+            Skip it if nothing fits; an untagged log still counts.
+          </Body>
+          <View style={[styles.chipRow, { marginTop: spacing.lg }]}>
+            {TRIGGERS.map((t) => (
+              <Chip
+                key={t}
+                label={t}
+                selected={tagTrigger === t}
+                onPress={() => setTagTrigger(tagTrigger === t ? null : t)}
+              />
+            ))}
+          </View>
+          {matchedPlan && (
+            <View style={styles.planCard}>
+              <Label color={colors.amberBright}>Your plan for this one</Label>
+              <Text style={styles.planCardText}>
+                If {matchedPlan.trigger.toLowerCase()}, then I will{' '}
+                {matchedPlan.action.charAt(0).toLowerCase() +
+                  matchedPlan.action.slice(1)}
+                .
+              </Text>
+              <Text style={styles.planCardSub}>
+                You wrote this on a calm day, for exactly this moment.
+              </Text>
+            </View>
+          )}
+          <View style={{ marginTop: spacing.xl }}>
+            <PrimaryButton
+              title={tagging.outcome === 'resisted' ? 'Log it as resisted' : 'Log it'}
+              onPress={() => confirmLog(true)}
+            />
+            <GhostButton
+              title="Skip the tag"
+              onPress={() => confirmLog(false)}
+            />
+          </View>
+        </View>
+      )}
+
+      {!tagging && flow === 'active' && tool === 'menu' && (
         <View>
           <Label color={colors.amber}>Craving toolkit</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
@@ -182,6 +307,19 @@ export default function Sos() {
             you through those minutes in a different way. All of them are
             free, always.
           </Body>
+
+          {cravingPlans.length > 0 && (
+            <View style={{ marginTop: spacing.lg }}>
+              <Label style={{ marginBottom: spacing.sm }}>My plans</Label>
+              {cravingPlans.map((p) => (
+                <View key={p.id} style={styles.planRow}>
+                  <Text style={styles.planTrigger}>{p.trigger}</Text>
+                  <Text style={styles.planAction}>then I will {p.action.charAt(0).toLowerCase() + p.action.slice(1)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           <View style={{ marginTop: spacing.lg }}>
             {TOOLS.map((t) => (
               <Pressable
@@ -196,11 +334,34 @@ export default function Sos() {
               </Pressable>
             ))}
           </View>
+
+          {supportName && (
+            <Pressable
+              onPress={messageMyPerson}
+              style={({ pressed }) => [
+                styles.personRow,
+                { opacity: pressed ? 0.8 : 1 },
+              ]}>
+              <Text style={styles.toolTitle}>Message {supportName}</Text>
+              <Text style={styles.toolDetail}>
+                One tap opens a message that says it plainly: craving hard,
+                keep me company for five minutes.
+              </Text>
+            </Pressable>
+          )}
+
           <GhostButton title="Close" onPress={() => router.back()} />
         </View>
       )}
 
-      {flow === 'active' && tool === 'breathing' && (
+      {!tagging && flow === 'active' && tool === 'wave' && (
+        <UrgeSurfWave
+          onOutcome={onWaveOutcome}
+          onBack={() => setTool('menu')}
+        />
+      )}
+
+      {!tagging && flow === 'active' && tool === 'breathing' && (
         <View>
           <Label color={colors.amber}>Breathing</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
@@ -222,15 +383,15 @@ export default function Sos() {
         </View>
       )}
 
-      {flow === 'active' && tool === 'urge' && (
+      {!tagging && flow === 'active' && tool === 'urge' && (
         <View>
           <Label color={colors.amber}>Urge timer</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
-            Ride the wave
+            Watch the clock run out on it
           </Display>
           <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
-            Cravings crest and fade in about three minutes. Watch the clock
-            run out on this one.
+            Cravings crest and fade in about three minutes. Or try Ride the
+            wave from the tools menu for the full five-minute version.
           </Body>
           <Text style={styles.countdown} maxFontSizeMultiplier={1.2}>{formatClock(remaining)}</Text>
           {remaining === 0 && (
@@ -243,7 +404,7 @@ export default function Sos() {
         </View>
       )}
 
-      {flow === 'active' && tool === 'pledge' && (
+      {!tagging && flow === 'active' && tool === 'pledge' && (
         <View>
           <Label color={colors.amber}>Delay pledge</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
@@ -275,7 +436,7 @@ export default function Sos() {
         </View>
       )}
 
-      {flow === 'active' && tool === 'why' && (
+      {!tagging && flow === 'active' && tool === 'why' && (
         <View>
           <Label color={colors.amber}>Why cards</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
@@ -318,7 +479,7 @@ export default function Sos() {
         </View>
       )}
 
-      {flow === 'resisted' && (
+      {!tagging && flow === 'resisted' && (
         <View style={styles.centerBlock}>
           <Label color={colors.pine}>Logged</Label>
           <Display size={34} style={{ marginTop: spacing.sm }}>
@@ -328,8 +489,9 @@ export default function Sos() {
             color={colors.inkMuted}
             style={{ marginTop: spacing.md, textAlign: 'center' }}>
             You faced a craving and it did not move you. It is in your
-            journal, your resisted count just went up, and every one you log
-            makes your patterns clearer.
+            journal, your resisted count just went up, and every one you
+            log makes your patterns clearer. That is another vote for the
+            person you are becoming.
           </Body>
           <View style={{ marginTop: spacing.xl, alignSelf: 'stretch' }}>
             <PrimaryButton title="Back to my streak" onPress={() => router.back()} />
@@ -337,38 +499,116 @@ export default function Sos() {
         </View>
       )}
 
-      {flow === 'slipped' && (
-        <View style={styles.centerBlock}>
-          <Label color={colors.clay}>Logged, honestly</Label>
-          <Display size={34} style={{ marginTop: spacing.sm }}>
+      {!tagging && flow === 'slipped' && rescueStep === 0 && (
+        <View>
+          <Label color={colors.clay}>Rescue, step 1 of 3</Label>
+          <Display size={32} style={{ marginTop: spacing.xs }}>
             A slip is data, not a verdict
           </Display>
-          <Body
-            color={colors.inkMuted}
-            style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            Most successful quits include a slip or two. What matters is
-            what happens next.
+          <Body color={colors.inkMuted} style={{ marginTop: spacing.md }}>
+            One slip is a minute that went wrong, not a quit that failed.
+            Most people who stay quit for good slipped on the way; what
+            separated them was not perfection, it was what they did in the
+            next ten minutes. That is what this is.
           </Body>
-          <Body
-            color={colors.ink}
-            style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            And hear this clearly: restarting the clock does not erase your
-            progress. Your lifetime totals, every dollar kept, puff avoided,
-            and craving resisted across all your attempts, are banked in
-            your Stats and stay there. Only the current streak starts over.
+          <Body color={colors.ink} style={{ marginTop: spacing.md }}>
+            Nothing about this erases you. The next screen shows your
+            record, and it is all still there.
           </Body>
-          <Body
-            color={colors.inkMuted}
-            style={{ marginTop: spacing.md, textAlign: 'center' }}>
-            You can restart the clock from right now, or keep your original
-            quit date and carry on. Either way, Mistless is still in your
-            corner.
-          </Body>
-          <View style={{ marginTop: spacing.xl, alignSelf: 'stretch' }}>
+          <View style={{ marginTop: spacing.xl }}>
             <PrimaryButton
-              title="Restart my clock from now"
-              onPress={onResetAndClose}
+              title="Show me what is still mine"
+              onPress={() => setRescueStep(1)}
             />
+            <GhostButton title="Not now" onPress={() => router.back()} />
+          </View>
+        </View>
+      )}
+
+      {!tagging && flow === 'slipped' && rescueStep === 1 && (
+        <View>
+          <Label color={colors.clay}>Rescue, step 2 of 3</Label>
+          <Display size={32} style={{ marginTop: spacing.xs }}>
+            All of this is banked
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginTop: spacing.md }}>
+            Restarting the clock moves one number: the current streak.
+            These totals count every attempt you have ever made, and they
+            do not go down. Ever.
+          </Body>
+          <View style={styles.ledger}>
+            <StatRow
+              label="Money kept, all attempts"
+              value={formatMoneyExact(lifetimeSaved)}
+            />
+            <StatRow
+              label="Puffs avoided, all attempts"
+              value={formatCount(lifetimePuffs)}
+            />
+            <StatRow
+              label="Cravings resisted, all time"
+              value={formatCount(resistedTotal)}
+            />
+            <StatRow
+              label="Total time nicotine-free"
+              value={`${Math.floor(lifetimeFree / 86400)} days`}
+              last
+            />
+          </View>
+          <View style={{ marginTop: spacing.xl }}>
+            <PrimaryButton
+              title="Plan for the moment that got me"
+              onPress={() => setRescueStep(2)}
+            />
+          </View>
+        </View>
+      )}
+
+      {!tagging && flow === 'slipped' && rescueStep === 2 && (
+        <View>
+          <Label color={colors.clay}>Rescue, step 3 of 3</Label>
+          <Display size={32} style={{ marginTop: spacing.xs }}>
+            One plan for next time
+          </Display>
+          <Body color={colors.inkMuted} style={{ marginTop: spacing.md, marginBottom: spacing.lg }}>
+            A slip usually means one situation had no plan yet. Give it
+            one now, while it is fresh, and it joins your plans in SOS.
+          </Body>
+
+          {rescuePlan ? (
+            <View style={styles.planCard}>
+              <Label color={colors.amberBright}>Your new plan</Label>
+              <Text style={styles.planCardText}>
+                If {rescuePlan.trigger.toLowerCase()}, then I will{' '}
+                {rescuePlan.action.charAt(0).toLowerCase() +
+                  rescuePlan.action.slice(1)}
+                .
+              </Text>
+            </View>
+          ) : cravingPlans.length < 3 ? (
+            <IfThenPlanForm
+              submitLabel="Save this plan"
+              onSubmit={(trigger, action) => setRescuePlan({ trigger, action })}
+            />
+          ) : (
+            <Body color={colors.inkMuted}>
+              You already carry three plans, the full set. You can swap one
+              in Settings whenever you like.
+            </Body>
+          )}
+
+          <View style={{ marginTop: spacing.xl }}>
+            <PrimaryButton
+              title="Resume my quit"
+              haptic="commit"
+              onPress={() => finishRescue(true)}
+            />
+            {!rescuePlan && (
+              <GhostButton
+                title="Resume without adding a plan"
+                onPress={() => finishRescue(false)}
+              />
+            )}
             <GhostButton
               title="Keep my quit date and carry on"
               onPress={() => router.back()}
@@ -389,6 +629,49 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+  },
+  personRow: {
+    backgroundColor: colors.pineSoft,
+    borderWidth: 1,
+    borderColor: colors.pine,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  planRow: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.lineStrong,
+    paddingVertical: 10,
+  },
+  planTrigger: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  planAction: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkMuted,
+    marginTop: 2,
+  },
+  planCard: {
+    backgroundColor: colors.pine,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  planCardText: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    lineHeight: 28,
+    color: colors.bg,
+    marginTop: spacing.xs,
+  },
+  planCardSub: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.pineSoft,
+    marginTop: spacing.xs,
   },
   toolTitle: {
     fontFamily: fonts.display,
@@ -446,6 +729,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.pineSoft,
     marginTop: spacing.sm,
+  },
+  ledger: {
+    marginTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.lineStrong,
   },
   centerBlock: {
     flex: 1,

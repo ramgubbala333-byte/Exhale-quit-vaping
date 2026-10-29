@@ -62,6 +62,43 @@ export interface CravingEvent {
   outcome: CravingOutcome;
   /** How long the urge-surfing session ran, in seconds. */
   durationSec: number;
+  /** The trigger the user tagged for this craving, if any (v1.3). */
+  trigger?: string;
+  /** Urge-surf wave tool: self-rated intensity (1-10) before the wave. */
+  intensityBefore?: number;
+  /** Urge-surf wave tool: self-rated intensity (1-10) after the wave. */
+  intensityAfter?: number;
+}
+
+/**
+ * An implementation intention: "If [trigger], then I will [action]."
+ * Built in onboarding (up to 3), surfaced inside SOS.
+ */
+export interface CravingPlan {
+  id: string;
+  /** The situation that sets the craving off, e.g. "After meals". */
+  trigger: string;
+  /** The small, specific response the user pre-chose, e.g. "Chew gum". */
+  action: string;
+}
+
+/** One day's mission outcome. `date` is a local yyyy-mm-dd key. */
+export interface MissionRecord {
+  date: string;
+  missionId: string;
+  status: 'done' | 'skipped';
+}
+
+/** Sub-toggles for the v1.3 engagement notifications. */
+export interface NotificationPrefs {
+  /** Heads-up 30 min before the user's known peak craving hour. */
+  dangerWindow: boolean;
+  /** Morning reminder of today's mission, at the chosen time. */
+  missionReminder: boolean;
+  missionReminderHour: number;
+  missionReminderMinute: number;
+  /** Friday-evening prompt with the week's kept amount. */
+  savingsSweep: boolean;
 }
 
 /** One logged puff while cutting down in taper mode. */
@@ -77,7 +114,13 @@ export interface SavingsGoal {
   price: number;
 }
 
-export type JournalKind = 'note' | 'resisted' | 'slip' | 'reset';
+export type JournalKind =
+  | 'note'
+  | 'resisted'
+  | 'slip'
+  | 'reset'
+  | 'intention'
+  | 'reflection';
 
 export interface JournalEntry {
   id: string;

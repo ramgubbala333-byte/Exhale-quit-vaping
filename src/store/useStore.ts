@@ -14,11 +14,29 @@ import {
 import type {
   CravingEvent,
   CravingOutcome,
+  CravingPlan,
   JournalEntry,
+  MissionRecord,
+  NotificationPrefs,
   Plan,
   PuffEvent,
   SavingsGoal,
 } from '../types';
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  dangerWindow: true,
+  missionReminder: true,
+  missionReminderHour: 9,
+  missionReminderMinute: 0,
+  savingsSweep: true,
+};
+
+/** Extra detail a craving log can carry (v1.3: trigger tag, wave ratings). */
+export interface CravingLogExtras {
+  trigger?: string;
+  intensityBefore?: number;
+  intensityAfter?: number;
+}
 
 interface ExhaleState {
   /** Set true once AsyncStorage rehydration finishes; gates the router. */
@@ -44,6 +62,20 @@ interface ExhaleState {
   /** The thing the user is saving their kept money toward, if set. */
   savingsGoal: SavingsGoal | null;
 
+  /** If-then craving plans built in onboarding / Settings / rescue. */
+  cravingPlans: CravingPlan[];
+  /** Daily mission outcomes, keyed by local date in each record. */
+  missionLog: MissionRecord[];
+  /** Name of the user's chosen support person for SOS text-a-human. */
+  supportName: string | null;
+  /** Engagement-notification sub-toggles (master switch stays above). */
+  notificationPrefs: NotificationPrefs;
+  /**
+   * Times the lapse-rescue flow was completed. A slip that ends in a
+   * rescue is a comeback, and comebacks are counted with pride.
+   */
+  rescueCount: number;
+
   /** Milestone ids that have already had their celebration sheet. */
   celebratedMilestones: string[];
   /**
@@ -57,10 +89,26 @@ interface ExhaleState {
   setPlan: (plan: Plan) => void;
   /** Replaces the plan's habit numbers (Settings edit form). */
   updatePlan: (patch: Partial<Plan>) => void;
-  logCraving: (outcome: CravingOutcome, durationSec: number) => CravingEvent;
+  logCraving: (
+    outcome: CravingOutcome,
+    durationSec: number,
+    extras?: CravingLogExtras,
+  ) => CravingEvent;
   addJournalEntry: (text: string, kind?: JournalEntry['kind']) => void;
-  /** Moves the quit date to now, banking the finished streak's totals. */
-  resetQuitDate: () => void;
+  /**
+   * Moves the quit date to now, banking the finished streak's totals.
+   * With `rescue: true` it also counts a comeback (lapse-rescue flow).
+   */
+  resetQuitDate: (opts?: { rescue?: boolean }) => void;
+  addCravingPlan: (trigger: string, action: string) => void;
+  removeCravingPlan: (id: string) => void;
+  setMissionStatus: (
+    date: string,
+    missionId: string,
+    status: MissionRecord['status'],
+  ) => void;
+  setSupportName: (name: string | null) => void;
+  setNotificationPrefs: (patch: Partial<NotificationPrefs>) => void;
   /** Logs one puff against today's taper budget. */
   logPuff: () => void;
   setSavingsGoal: (goal: SavingsGoal | null) => void;
@@ -94,6 +142,11 @@ export const useStore = create<ExhaleState>()(
       lifetimeFreeSecondsBanked: 0,
       taperPuffs: [],
       savingsGoal: null,
+      cravingPlans: [],
+      missionLog: [],
+      supportName: null,
+      notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS },
+      rescueCount: 0,
       celebratedMilestones: [],
       celebrationSeeded: false,
 
@@ -104,21 +157,33 @@ export const useStore = create<ExhaleState>()(
       updatePlan: (patch) =>
         set((s) => (s.plan ? { plan: { ...s.plan, ...patch } } : s)),
 
-      logCraving: (outcome, durationSec) => {
+      logCraving: (outcome, durationSec, extras) => {
         const event: CravingEvent = {
           id: makeId(),
           timestamp: new Date().toISOString(),
           outcome,
           durationSec,
+          trigger: extras?.trigger,
+          intensityBefore: extras?.intensityBefore,
+          intensityAfter: extras?.intensityAfter,
         };
+        const baseText =
+          outcome === 'resisted'
+            ? 'Rode out a craving and stayed quit.'
+            : 'Slipped during a craving. Logged honestly, moving on.';
+        const waveText =
+          extras?.intensityBefore !== undefined &&
+          extras?.intensityAfter !== undefined
+            ? ` Urge surfed from ${extras.intensityBefore}/10 down to ${extras.intensityAfter}/10.`
+            : '';
+        const triggerText = extras?.trigger
+          ? ` Trigger: ${extras.trigger}.`
+          : '';
         const entry: JournalEntry = {
           id: makeId(),
           timestamp: event.timestamp,
           kind: outcome === 'resisted' ? 'resisted' : 'slip',
-          text:
-            outcome === 'resisted'
-              ? 'Rode out a craving with the breathing exercise.'
-              : 'Slipped during a craving. Logged honestly, moving on.',
+          text: baseText + waveText + triggerText,
         };
         set((s) => ({
           cravings: [event, ...s.cravings],
@@ -137,22 +202,26 @@ export const useStore = create<ExhaleState>()(
         set((s) => ({ journal: [entry, ...s.journal] }));
       },
 
-      resetQuitDate: () => {
+      resetQuitDate: (opts) => {
         const s = get();
         const { plan } = s;
         if (!plan) return;
+        const rescue = opts?.rescue === true;
         const now = new Date();
         const finishedStreak = elapsedSeconds(plan, now);
         const entry: JournalEntry = {
           id: makeId(),
           timestamp: now.toISOString(),
           kind: 'reset',
-          text: 'Restarted the clock. A slip is data, not a verdict.',
+          text: rescue
+            ? 'Slipped, ran the rescue, and started again. A comeback, logged with pride.'
+            : 'Restarted the clock. A slip is data, not a verdict.',
         };
         set({
           plan: { ...plan, quitDate: now.toISOString() },
           bestStreakSeconds: Math.max(s.bestStreakSeconds, finishedStreak),
           relapseCount: s.relapseCount + 1,
+          rescueCount: rescue ? s.rescueCount + 1 : s.rescueCount,
           // Bank the finished attempt's totals so lifetime progress is
           // preserved permanently, even though the streak restarts.
           lifetimeMoneyBanked: s.lifetimeMoneyBanked + moneySaved(plan, now),
@@ -193,6 +262,39 @@ export const useStore = create<ExhaleState>()(
 
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
 
+      addCravingPlan: (trigger, action) => {
+        const t = trigger.trim();
+        const a = action.trim();
+        if (!t || !a) return;
+        set((s) => ({
+          cravingPlans: [
+            ...s.cravingPlans,
+            { id: makeId(), trigger: t, action: a },
+          ],
+        }));
+      },
+
+      removeCravingPlan: (id) =>
+        set((s) => ({
+          cravingPlans: s.cravingPlans.filter((p) => p.id !== id),
+        })),
+
+      setMissionStatus: (date, missionId, status) =>
+        set((s) => ({
+          missionLog: [
+            ...s.missionLog.filter((m) => m.date !== date),
+            { date, missionId, status },
+          ],
+        })),
+
+      setSupportName: (name) =>
+        set({ supportName: name && name.trim() ? name.trim() : null }),
+
+      setNotificationPrefs: (patch) =>
+        set((s) => ({
+          notificationPrefs: { ...s.notificationPrefs, ...patch },
+        })),
+
       markMilestoneCelebrated: (id) =>
         set((s) =>
           s.celebratedMilestones.includes(id)
@@ -222,6 +324,11 @@ export const useStore = create<ExhaleState>()(
           lifetimeFreeSecondsBanked: 0,
           taperPuffs: [],
           savingsGoal: null,
+          cravingPlans: [],
+          missionLog: [],
+          supportName: null,
+          notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS },
+          rescueCount: 0,
           celebratedMilestones: [],
           celebrationSeeded: false,
         }),
@@ -242,6 +349,11 @@ export const useStore = create<ExhaleState>()(
         lifetimeFreeSecondsBanked: s.lifetimeFreeSecondsBanked,
         taperPuffs: s.taperPuffs,
         savingsGoal: s.savingsGoal,
+        cravingPlans: s.cravingPlans,
+        missionLog: s.missionLog,
+        supportName: s.supportName,
+        notificationPrefs: s.notificationPrefs,
+        rescueCount: s.rescueCount,
         celebratedMilestones: s.celebratedMilestones,
         celebrationSeeded: s.celebrationSeeded,
       }),

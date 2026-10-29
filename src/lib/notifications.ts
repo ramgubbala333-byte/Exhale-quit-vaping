@@ -1,7 +1,11 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { dailyCost, elapsedDays, formatMoneyExact } from './calc';
+import { cravingForecast } from './forecast';
 import { MILESTONES } from './milestones';
+import { missionForDate } from './missions';
+import { useStore } from '../store/useStore';
 import type { Plan } from '../types';
 
 /**
@@ -13,6 +17,10 @@ import type { Plan } from '../types';
 
 const DAILY_ID = 'exhale-daily-checkin';
 const MILESTONE_PREFIX = 'exhale-milestone-';
+const DANGER_ID = 'mistless-danger-window';
+const MISSION_ID = 'mistless-mission-reminder';
+const SWEEP_ID = 'mistless-savings-sweep';
+const ENGAGEMENT_IDS = [DANGER_ID, MISSION_ID, SWEEP_ID];
 
 export function setupNotificationHandler() {
   Notifications.setNotificationHandler({
@@ -94,11 +102,107 @@ export async function cancelReminders(): Promise<void> {
         .filter(
           (n) =>
             n.identifier === DAILY_ID ||
-            n.identifier.startsWith(MILESTONE_PREFIX),
+            n.identifier.startsWith(MILESTONE_PREFIX) ||
+            ENGAGEMENT_IDS.includes(n.identifier),
         )
         .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
     );
   } catch {
     // Nothing to cancel or platform unsupported.
+  }
+}
+
+/**
+ * Full reschedule from current store state: the classic reminders
+ * (daily check-in + milestone alerts) plus the v1.3 engagement set,
+ * each gated by its own Settings toggle:
+ *
+ * - Danger-window heads-up, 30 minutes before the user's known peak
+ *   craving hour (only once the forecast has enough logged cravings).
+ * - Morning mission reminder at the user's chosen time.
+ * - Friday savings sweep with the amount kept in the last seven days.
+ *
+ * Copy stays honest and pressure-free: no guilt, no streak threats.
+ * Safe to call on app open and after any settings change; everything
+ * is best-effort and silent on failure.
+ */
+export async function refreshAllNotifications(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const s = useStore.getState();
+    if (!s.notificationsEnabled || !s.plan) {
+      await cancelReminders();
+      return;
+    }
+    await scheduleReminders(s.plan);
+
+    // Clear the engagement set before rescheduling per current prefs.
+    for (const id of ENGAGEMENT_IDS) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      } catch {
+        // Not scheduled; nothing to clear.
+      }
+    }
+
+    const prefs = s.notificationPrefs;
+
+    if (prefs.dangerWindow) {
+      const forecast = cravingForecast(s.cravings);
+      if (forecast) {
+        let mins = forecast.peakHour * 60 - 30;
+        if (mins < 0) mins += 24 * 60;
+        const hourLabel = new Date();
+        hourLabel.setHours(forecast.peakHour, 0, 0, 0);
+        await Notifications.scheduleNotificationAsync({
+          identifier: DANGER_ID,
+          content: {
+            title: 'Your danger window is near',
+            body: `Most of your cravings land around ${hourLabel.toLocaleTimeString('en-US', { hour: 'numeric' })}. Your plans and the wave are ready in SOS if one shows up.`,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour: Math.floor(mins / 60),
+            minute: mins % 60,
+          },
+        });
+      }
+    }
+
+    if (prefs.missionReminder) {
+      const mission = missionForDate();
+      await Notifications.scheduleNotificationAsync({
+        identifier: MISSION_ID,
+        content: {
+          title: "Today's mission",
+          body: `${mission.title}. ${mission.detail}`,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: prefs.missionReminderHour,
+          minute: prefs.missionReminderMinute,
+        },
+      });
+    }
+
+    if (prefs.savingsSweep) {
+      const days = Math.min(7, elapsedDays(s.plan));
+      const kept = dailyCost(s.plan) * days;
+      await Notifications.scheduleNotificationAsync({
+        identifier: SWEEP_ID,
+        content: {
+          title: 'Friday savings sweep',
+          body: `You kept ${formatMoneyExact(kept)} this week. Move it somewhere it works for you?`,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: 6, // Friday (1 = Sunday)
+          hour: 18,
+          minute: 0,
+        },
+      });
+    }
+  } catch {
+    // Scheduling is best-effort; ignore failures silently.
   }
 }

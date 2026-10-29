@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import MaxWidth from '@/components/MaxWidth';
 import { Body, Display, PrimaryButton, Screen } from '@/components/ui';
 import { formatDateTime } from '@/lib/calc';
 import { useStore } from '@/store/useStore';
@@ -26,6 +27,7 @@ export default function Journal() {
 
   return (
     <Screen scroll={false}>
+      <MaxWidth>
       <Display size={32}>Journal</Display>
       <Body
         color={colors.inkMuted}
@@ -36,10 +38,10 @@ export default function Journal() {
 
       {journal.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
+          <Text style={styles.emptyTitle}>Your story starts here</Text>
           <Body color={colors.inkMuted} style={{ textAlign: 'center' }}>
-            Your first resisted craving, or your first note, starts the
-            journal.
+            Every craving you ride out lands here on its own. Or start
+            now: one honest line about day one is a fine first entry.
           </Body>
         </View>
       ) : (
@@ -71,6 +73,7 @@ export default function Journal() {
           onPress={() => router.push('/note')}
         />
       </View>
+    </MaxWidth>
     </Screen>
   );
 }

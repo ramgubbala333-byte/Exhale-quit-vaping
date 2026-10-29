@@ -4,8 +4,12 @@ A calm, premium companion app for quitting vaping: quit now or cut down
 first on a weekly taper, a live quit timer, money kept, puffs avoided, a
 health-recovery milestone timeline, a four-tool craving SOS toolkit, a
 savings goal jar, a journal, achievements, lifetime stats that survive
-slips, and a craving trigger heatmap. Offline first: everything lives on
-the device, there is no account and no backend.
+slips, and a craving trigger heatmap. Home carries a rotating daily
+line, a last-7-days streak dot row, animated recovery rings (Heart,
+Lungs, Energy), and one-time celebration sheets when milestones land;
+Stats adds a craving forecast that names your danger window. Offline
+first: everything lives on the device, there is no account and no
+backend.
 
 > **Name.** The display name is **Mistless** (locked). "Exhale" was the
 > original project codename and is taken by a competitor, so it survives
@@ -37,6 +41,7 @@ npx expo export --platform web   # production bundle smoke test
 - expo-router (file-based navigation, tabs + modals)
 - Zustand for state, persisted to AsyncStorage (`zustand/middleware/persist`)
 - expo-notifications for local reminders (daily check-in + milestone alerts)
+- react-native-svg for the Home recovery rings (animated with RN Animated)
 - Fonts: Fraunces (display) + Archivo (body) via `@expo-google-fonts/*`
 - Icons: `@expo/vector-icons` (Ionicons), used sparingly
 
@@ -47,8 +52,9 @@ app/                      expo-router routes
   _layout.tsx             root stack, font loading, notification handler
   index.tsx               entry gate: onboarding vs. tabs, waits for rehydration
   onboarding.tsx          6-step setup: welcome, habit (nicotine strength,
-                          device size, flavour), approach (quit now vs.
-                          taper), quit moment, reasons, plan summary
+                          device size, multi-select flavour library),
+                          approach (quit now vs. taper), quit moment,
+                          reasons, plan summary
   sos.tsx                 craving toolkit modal: breathing (4-4-4 and
                           4-7-8), 3-minute urge timer, 10-minute delay
                           pledge, swipeable why cards
@@ -59,26 +65,39 @@ app/                      expo-router routes
   (tabs)/
     index.tsx             home: quit timer + money kept, or the taper
                           panel (today's puff budget, one-tap logger)
-                          while cutting down; savings-goal strip
+                          while cutting down; daily line, week dots,
+                          recovery rings, savings-goal strip, milestone
+                          celebration sheets
     milestones.tsx        health timeline (15 milestones) + achievements
                           grid + shareable milestone cards
     stats.tsx             lifetime totals, savings goal jar, 7-day craving
-                          chart, trigger heatmap, streaks
+                          chart, trigger heatmap, craving forecast
+                          (danger window), streaks
     journal.tsx           auto entries (resisted / slip / reset) + free notes
-    settings.tsx          edit habit numbers, savings goal, data export,
-                          quit date, notifications, reset all data
+    settings.tsx          edit habit numbers and flavours, savings goal,
+                          data export, quit date, notifications, reset
+                          all data
 
 src/
-  types.ts                Plan (incl. taper config), CravingEvent, JournalEntry
+  types.ts                Plan (incl. taper config, flavours array),
+                          CravingEvent, JournalEntry
   theme.ts                palette, font families, spacing, radii
   store/useStore.ts       the single Zustand store (persisted)
   lib/calc.ts             all savings/streak/taper math as pure functions
-  lib/milestones.ts       health milestone timeline data + state helpers
+  lib/milestones.ts       health milestone timeline data + state helpers,
+                          recovery tracks (Heart / Lungs / Energy ladders)
+  lib/flavours.ts         the 44-flavour library in 6 categories +
+                          planFlavours() reader (handles legacy data)
+  lib/dailyLines.ts       32-line encouragement bank, picked by date
+  lib/forecast.ts         craving danger-window computation (peak
+                          daypart + hour, needs 5+ logged cravings)
   lib/achievements.ts     badge definitions checked against real data
   lib/notifications.ts    permission + scheduling for local reminders
   components/             ui primitives, MaxWidth, QuitTimer,
                           BreathingCircle, charts, SavingsGoalJar,
-                          TriggerHeatmap
+                          TriggerHeatmap, RecoveryRings, WeekDots,
+                          FlavourPicker, MilestoneCelebration,
+                          CravingForecast
   services/revenuecat.ts  dormant purchase layer (see below)
 ```
 
@@ -109,8 +128,38 @@ so numbers agree on every screen and nothing can drift out of sync.
   day arrives, the plan flips automatically to a full quit with the
   standard timer, and a journal entry marks the cut-down complete.
 - **Savings goal.** A goal (name + price) set in Settings is tracked
-  against lifetime money kept, shown as a filled jar on Stats and a
-  compact progress strip on Home.
+  against lifetime money kept, shown as a jar on Stats whose amber fill
+  animates to the covered percentage, and a compact progress strip on
+  Home.
+- **Flavours.** Onboarding and Settings offer a 44-flavour library in
+  six categories (Fruit, Ice & Mint, Dessert, Drinks, Candy, Tobacco &
+  Classics), built from the flavour menus of the major disposable and
+  pod brands and retailer best-seller lists, plus a free-text entry.
+  Selection is multi-select and stored on the plan as `flavours: string[]`.
+  Plans saved by older builds carry a single `flavour` string;
+  `planFlavours()` reads both shapes, so old data keeps working.
+- **Recovery rings.** Home shows Heart, Lungs, and Energy rings. Each
+  track is a ladder of timeline milestones; the percentage is rungs
+  passed plus the fraction of the way to the next rung, animated with
+  react-native-svg. Same WHO/CDC population-level framing as the
+  timeline, footnoted on the section.
+- **Milestone celebrations.** When a milestone is newly reached while
+  the app is open, a bottom sheet celebrates it once (title, days free,
+  money kept, share). Celebrated ids persist in the store, so a
+  milestone can never celebrate twice; the first check after install
+  seeds the long-past backlog quietly, sparing only the latest
+  milestone if it landed within the week.
+- **Week dots.** Home renders the last 7 days honestly: filled for a
+  vape-free tracked day, amber for a day with a logged slip or restart,
+  hollow for days before this quit began; today is ringed.
+- **Daily line.** One line per day under the timer, picked
+  deterministically by local date from a 32-line bank written for
+  quitters (no health promises, no medical advice).
+- **Craving forecast.** With 5 or more logged cravings, Stats names
+  the danger window from the log itself (busiest daypart and hour,
+  e.g. "Most cravings hit in the evening, around 9 PM") and points at
+  SOS ahead of it. Below five, the card is an honest placeholder that
+  counts progress instead of inventing a pattern.
 
 ## Product policy: the core is never paywalled
 
@@ -171,3 +220,7 @@ To enable RevenueCat later:
   `android-build/` APK workspace, which is a separate full copy of the
   project with its own tsconfig)
 - `npx expo export --platform web` — succeeds (all routes exported)
+- Flavours + Home glow-up pass: flavour library with legacy migration,
+  recovery rings, milestone celebration, animated jar fill, daily line,
+  week dots, craving forecast, and warmer empty states all included in
+  the two checks above

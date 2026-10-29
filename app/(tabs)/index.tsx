@@ -3,8 +3,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
+import MilestoneCelebration from '@/components/MilestoneCelebration';
 import QuitTimer from '@/components/QuitTimer';
+import RecoveryRings from '@/components/RecoveryRings';
 import { SavingsGoalStrip } from '@/components/SavingsGoalJar';
+import WeekDots from '@/components/WeekDots';
 import {
   Body,
   Display,
@@ -15,6 +18,7 @@ import {
 } from '@/components/ui';
 import {
   daysUntilFlip,
+  elapsedDays,
   elapsedSeconds,
   formatCount,
   formatDurationShort,
@@ -28,14 +32,25 @@ import {
   taperWeekIndex,
   unitsAvoided,
 } from '@/lib/calc';
+import { dailyLine } from '@/lib/dailyLines';
 import type { Plan } from '@/types';
-import { nextMilestone, progressToNext } from '@/lib/milestones';
+import {
+  milestoneStates,
+  nextMilestone,
+  progressToNext,
+  type MilestoneState,
+} from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 export default function Home() {
   const plan = useStore((s) => s.plan);
   const cravings = useStore((s) => s.cravings);
+  const journal = useStore((s) => s.journal);
+  const celebratedMilestones = useStore((s) => s.celebratedMilestones);
+  const celebrationSeeded = useStore((s) => s.celebrationSeeded);
+  const markMilestoneCelebrated = useStore((s) => s.markMilestoneCelebrated);
+  const seedCelebrations = useStore((s) => s.seedCelebrations);
   const taperPuffs = useStore((s) => s.taperPuffs);
   const logPuff = useStore((s) => s.logPuff);
   const advanceTaperIfReady = useStore((s) => s.advanceTaperIfReady);
@@ -51,12 +66,55 @@ export default function Home() {
     freeSeconds: bankedFreeSeconds,
   };
   const [now, setNow] = useState(() => new Date());
+  const [celebration, setCelebration] = useState<MilestoneState | null>(null);
 
   // Refresh the derived numbers once a minute (the timer ticks itself).
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
+
+  // Milestone celebrations: when a milestone is newly reached while the
+  // app is open, show its sheet exactly once (ids persist in the store).
+  // The first-ever check seeds the backlog quietly: milestones reached
+  // long before this feature existed are marked celebrated in bulk,
+  // except the latest one if it landed within the last week.
+  useEffect(() => {
+    if (!plan || celebration) return;
+    const states = milestoneStates(plan, now);
+    const reached = states.filter((s) => s.reached);
+    if (!celebrationSeeded) {
+      if (reached.length === 0) {
+        seedCelebrations([]);
+        return;
+      }
+      const latest = reached[reached.length - 1];
+      const latestRecent =
+        now.getTime() - new Date(latest.at).getTime() <= 7 * 86400000;
+      const seedIds = reached
+        .map((s) => s.id)
+        .filter((id) => !(latestRecent && id === latest.id));
+      seedCelebrations(seedIds);
+      return;
+    }
+    const pending = reached.find(
+      (s) => !celebratedMilestones.includes(s.id),
+    );
+    if (pending) {
+      // Mark before showing, so the sheet fires at most once even if
+      // the app is closed while it is on screen.
+      markMilestoneCelebrated(pending.id);
+      setCelebration(pending);
+    }
+  }, [
+    plan,
+    now,
+    celebration,
+    celebrationSeeded,
+    celebratedMilestones,
+    markMilestoneCelebrated,
+    seedCelebrations,
+  ]);
 
   // If a taper's quit day (or zero-budget day) has arrived, flip it into a
   // full quit before rendering the standard dashboard.
@@ -105,6 +163,10 @@ export default function Home() {
           <Label style={{ marginTop: spacing.lg }}>Nicotine-free for</Label>
           <QuitTimer plan={plan} />
 
+          <Text maxFontSizeMultiplier={1.3} style={styles.dailyLine}>
+            {dailyLine(now)}
+          </Text>
+
           <View style={styles.savedBlock}>
             <Label color={colors.amber}>Money kept so far</Label>
             <Display size={44} color={colors.pineDeep}>
@@ -131,6 +193,10 @@ export default function Home() {
               last
             />
           </View>
+
+          <WeekDots plan={plan} cravings={cravings} journal={journal} now={now} />
+
+          <RecoveryRings plan={plan} now={now} />
         </>
       )}
 
@@ -182,6 +248,13 @@ export default function Home() {
         style={{ marginTop: spacing.lg, textAlign: 'center' }}>
         Your reasons: {plan.reasons.join(' · ')}
       </Body>
+
+      <MilestoneCelebration
+        milestone={celebration}
+        daysFree={Math.floor(elapsedDays(plan, now))}
+        moneyKept={moneySaved(plan, now)}
+        onDismiss={() => setCelebration(null)}
+      />
     </MaxWidth>
     </Screen>
   );
@@ -261,6 +334,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.inkMuted,
+  },
+  dailyLine: {
+    fontFamily: fonts.display,
+    fontSize: 17,
+    lineHeight: 24,
+    color: colors.pine,
+    marginTop: spacing.lg,
   },
   savedBlock: {
     marginTop: spacing.xl,

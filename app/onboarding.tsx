@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
+import FlavourPicker from '@/components/FlavourPicker';
 import {
   Body,
   Chip,
@@ -31,17 +32,6 @@ const DEVICE_OPTIONS: { value: DeviceType; label: string; unit: string }[] = [
   { value: 'disposable', label: 'Disposables', unit: 'device' },
   { value: 'pod', label: 'Pod system', unit: 'pod' },
   { value: 'refillable', label: 'Refillable tank', unit: 'bottle of liquid' },
-];
-
-const FLAVOUR_OPTIONS = [
-  'Mint',
-  'Menthol',
-  'Fruit ice',
-  'Berry',
-  'Tobacco',
-  'Dessert',
-  'Coffee',
-  'Unflavoured',
 ];
 
 const CUT_OPTIONS = [10, 20, 25, 33, 50];
@@ -80,7 +70,7 @@ export default function Onboarding() {
   const [nicotineText, setNicotineText] = useState('');
   const [deviceSizeText, setDeviceSizeText] = useState('');
   const [puffsPerDeviceText, setPuffsPerDeviceText] = useState('');
-  const [flavour, setFlavour] = useState<string | null>(null);
+  const [flavours, setFlavours] = useState<string[]>([]);
   const [customFlavour, setCustomFlavour] = useState('');
   const [approach, setApproach] = useState<QuitApproach>('now');
   const [cutPercent, setCutPercent] = useState(25);
@@ -136,7 +126,6 @@ export default function Onboarding() {
     const nicotine = parseFloat(nicotineText);
     const sizeMl = parseFloat(deviceSizeText);
     const perDevice = parseInt(puffsPerDeviceText, 10);
-    const flavourValue = (customFlavour.trim() || flavour || '').trim();
     const base: Plan = {
       deviceType,
       puffsPerDay: habit.puffs,
@@ -148,7 +137,7 @@ export default function Onboarding() {
       nicotineMg: nicotine > 0 ? nicotine : undefined,
       deviceSizeMl: sizeMl > 0 ? sizeMl : undefined,
       puffsPerDevice: perDevice > 0 ? perDevice : undefined,
-      flavour: flavourValue ? flavourValue : undefined,
+      flavours: flavours.length > 0 ? flavours : undefined,
       approach,
     };
     if (approach === 'taper') {
@@ -171,8 +160,7 @@ export default function Onboarding() {
     nicotineText,
     deviceSizeText,
     puffsPerDeviceText,
-    flavour,
-    customFlavour,
+    flavours,
     approach,
     cutPercent,
     effectiveTarget,
@@ -184,6 +172,18 @@ export default function Onboarding() {
     setReasons((prev) =>
       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
     );
+
+  const toggleFlavour = (f: string) =>
+    setFlavours((prev) =>
+      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
+    );
+
+  const addCustomFlavour = () => {
+    const text = customFlavour.trim();
+    if (!text) return;
+    if (!flavours.includes(text)) setFlavours((prev) => [...prev, text]);
+    setCustomFlavour('');
+  };
 
   const addCustomReason = () => {
     const text = customReason.trim();
@@ -324,25 +324,19 @@ export default function Onboarding() {
             placeholder="e.g. 5000"
           />
 
-          <Label style={{ marginBottom: spacing.sm }}>Your usual flavour</Label>
-          <View style={styles.chipRow}>
-            {FLAVOUR_OPTIONS.map((f) => (
-              <Chip
-                key={f}
-                label={f}
-                selected={flavour === f && customFlavour.trim() === ''}
-                onPress={() => {
-                  setFlavour(f);
-                  setCustomFlavour('');
-                }}
-              />
-            ))}
-          </View>
-          <Field
-            label="Or type your flavour"
-            value={customFlavour}
-            onChangeText={setCustomFlavour}
-            placeholder="e.g. Blue razz lemonade"
+          <Label style={{ marginBottom: spacing.sm }}>
+            Your usual flavours (pick any)
+          </Label>
+          <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+            The ones that will call your name. Naming them now makes them
+            easier to spot, and refuse, later.
+          </Body>
+          <FlavourPicker
+            selected={flavours}
+            onToggle={toggleFlavour}
+            customText={customFlavour}
+            onCustomTextChange={setCustomFlavour}
+            onAddCustom={addCustomFlavour}
           />
         </View>
       )}
@@ -586,6 +580,11 @@ export default function Onboarding() {
           <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
             Your reasons: {draft.reasons.join(' · ')}
           </Body>
+          {draft.flavours && draft.flavours.length > 0 && (
+            <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+              The flavours you are leaving behind: {draft.flavours.join(' · ')}
+            </Body>
+          )}
         </View>
       )}
 

@@ -1,25 +1,52 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import CravingBarChart, { type DayCravings } from '@/components/CravingBarChart';
-import { Body, Display, Label, Screen, StatRow } from '@/components/ui';
+import CravingForecast from '@/components/CravingForecast';
+import MaxWidth from '@/components/MaxWidth';
+import { SavingsGoalJar } from '@/components/SavingsGoalJar';
+import TriggerHeatmap from '@/components/TriggerHeatmap';
+import {
+  Body,
+  Display,
+  GhostButton,
+  Label,
+  Screen,
+  StatRow,
+} from '@/components/ui';
 import {
   elapsedSeconds,
   formatCount,
   formatDurationShort,
   formatMoney,
   formatMoneyExact,
+  lifetimeFreeSeconds,
+  lifetimeMoneySaved,
+  lifetimePuffsAvoided,
+  lifetimeUnitsAvoided,
   moneySaved,
   puffsAvoided,
 } from '@/lib/calc';
 import { useStore } from '@/store/useStore';
-import { colors, spacing } from '@/theme';
+import { colors, fonts, spacing } from '@/theme';
 
 export default function Stats() {
   const plan = useStore((s) => s.plan);
   const cravings = useStore((s) => s.cravings);
   const bestStreakSeconds = useStore((s) => s.bestStreakSeconds);
   const relapseCount = useStore((s) => s.relapseCount);
+  const savingsGoal = useStore((s) => s.savingsGoal);
+  const bankedMoney = useStore((s) => s.lifetimeMoneyBanked);
+  const bankedPuffs = useStore((s) => s.lifetimePuffsBanked);
+  const bankedUnits = useStore((s) => s.lifetimeUnitsBanked);
+  const bankedFreeSeconds = useStore((s) => s.lifetimeFreeSecondsBanked);
+  const banked = {
+    money: bankedMoney,
+    puffs: bankedPuffs,
+    units: bankedUnits,
+    freeSeconds: bankedFreeSeconds,
+  };
 
   const week = useMemo<DayCravings[]>(() => {
     const days: DayCravings[] = [];
@@ -70,18 +97,47 @@ export default function Stats() {
   const currentStreak = elapsedSeconds(plan);
   const longestStreak = Math.max(bestStreakSeconds, currentStreak);
   const saved = moneySaved(plan);
+  const lifetimeMoney = lifetimeMoneySaved(plan, banked);
+  const lifetimePuffs = lifetimePuffsAvoided(plan, banked);
+  const lifetimeUnits = lifetimeUnitsAvoided(plan, banked);
+  const lifetimeFree = lifetimeFreeSeconds(plan, banked);
 
   return (
     <Screen>
+      <MaxWidth>
       <Display size={32}>Your numbers</Display>
       <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
         Patterns, not judgement. Knowing when cravings hit is how you get
         ahead of them.
       </Body>
 
+      {total === 0 && (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Nothing logged yet, and that is fine</Text>
+          <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+            These charts wake up the first time a craving hits and you
+            ride it out in SOS. That first log starts your record, your
+            trigger map, and your danger-window forecast.
+          </Body>
+          <View style={styles.emptyAction}>
+            <GhostButton title="Open SOS" onPress={() => router.push('/sos')} />
+          </View>
+        </View>
+      )}
+
       <Label style={styles.sectionLabel}>Cravings, last 7 days</Label>
       <View style={styles.chartCard}>
         <CravingBarChart data={week} />
+      </View>
+
+      <Label style={styles.sectionLabel}>When cravings hit</Label>
+      <View style={styles.chartCard}>
+        <TriggerHeatmap cravings={cravings} />
+      </View>
+
+      <Label style={styles.sectionLabel}>Your danger window</Label>
+      <View style={styles.chartCard}>
+        <CravingForecast cravings={cravings} />
       </View>
 
       <Label style={styles.sectionLabel}>Craving record</Label>
@@ -111,19 +167,55 @@ export default function Stats() {
         />
       </View>
 
-      <Label style={styles.sectionLabel}>Money and puffs</Label>
+      <Label style={styles.sectionLabel}>Money and puffs, this run</Label>
       <View style={styles.ledger}>
-        <StatRow label="Total money kept" value={formatMoneyExact(saved)} />
+        <StatRow label="Money kept this run" value={formatMoneyExact(saved)} />
         <StatRow
           label="That is roughly, per month"
           value={formatMoney(saved > 0 ? saved / Math.max(1, currentStreak / 86400) * 30.4 : 0)}
         />
         <StatRow
-          label="Puffs avoided"
+          label="Puffs avoided this run"
           value={formatCount(puffsAvoided(plan))}
           last
         />
       </View>
+
+      <Label style={styles.sectionLabel}>Lifetime</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.sm }}>
+        Every attempt counts. These totals are banked when a streak ends
+        and never go down: a slip restarts the current streak, it does not
+        touch anything here.
+      </Body>
+      <View style={styles.ledger}>
+        <StatRow
+          label="Total money kept, all attempts"
+          value={formatMoneyExact(lifetimeMoney)}
+        />
+        <StatRow
+          label="Total puffs avoided, all attempts"
+          value={formatCount(lifetimePuffs)}
+        />
+        <StatRow
+          label="Pods and devices not bought, all attempts"
+          value={lifetimeUnits.toFixed(1)}
+        />
+        <StatRow label="Total cravings resisted" value={formatCount(resisted)} />
+        <StatRow
+          label="Total time nicotine-free"
+          value={`${Math.floor(lifetimeFree / 86400)} days`}
+          detail="Adding up every streak you have ever held."
+          last
+        />
+      </View>
+
+      {savingsGoal && (
+        <>
+          <Label style={styles.sectionLabel}>Your savings goal</Label>
+          <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
+        </>
+      )}
+    </MaxWidth>
     </Screen>
   );
 }
@@ -141,4 +233,18 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.lineStrong,
   },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  emptyTitle: {
+    fontFamily: fonts.display,
+    fontSize: 19,
+    color: colors.ink,
+  },
+  emptyAction: { alignItems: 'flex-start', marginLeft: -12, marginBottom: -6 },
 });

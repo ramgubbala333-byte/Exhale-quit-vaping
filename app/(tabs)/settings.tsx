@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import FlavourPicker from '@/components/FlavourPicker';
 import {
   Body,
   Chip,
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui';
 import MaxWidth from '@/components/MaxWidth';
 import { dailyCost, formatMoney } from '@/lib/calc';
+import { planFlavours } from '@/lib/flavours';
 import {
   cancelReminders,
   ensureNotificationPermission,
@@ -53,7 +55,8 @@ export default function Settings() {
   const [unitsText, setUnitsText] = useState<string | null>(null);
   const [costText, setCostText] = useState<string | null>(null);
   const [nicotineText, setNicotineText] = useState<string | null>(null);
-  const [flavourText, setFlavourText] = useState<string | null>(null);
+  const [flavoursSel, setFlavoursSel] = useState<string[] | null>(null);
+  const [customFlavour, setCustomFlavour] = useState('');
   const [goalNameText, setGoalNameText] = useState<string | null>(null);
   const [goalPriceText, setGoalPriceText] = useState<string | null>(null);
   const [goalSaved, setGoalSaved] = useState(false);
@@ -66,7 +69,23 @@ export default function Settings() {
   const units = unitsText ?? String(plan.unitsPerWeek);
   const cost = costText ?? String(plan.costPerUnit);
   const nicotine = nicotineText ?? (plan.nicotineMg ? String(plan.nicotineMg) : '');
-  const flavour = flavourText ?? (plan.flavour ?? '');
+  const selectedFlavours = flavoursSel ?? planFlavours(plan);
+  const savedFlavoursLine = planFlavours(plan).join(', ');
+
+  const toggleFlavour = (f: string) =>
+    setFlavoursSel((prev) => {
+      const base = prev ?? planFlavours(plan);
+      return base.includes(f) ? base.filter((x) => x !== f) : [...base, f];
+    });
+
+  const addCustomFlavour = () => {
+    const text = customFlavour.trim();
+    if (!text) return;
+    if (!selectedFlavours.includes(text)) {
+      setFlavoursSel([...selectedFlavours, text]);
+    }
+    setCustomFlavour('');
+  };
   const goalName = goalNameText ?? (savingsGoal?.name ?? '');
   const goalPrice = goalPriceText ?? (savingsGoal ? String(savingsGoal.price) : '');
 
@@ -84,7 +103,10 @@ export default function Settings() {
       unitsPerWeek: u,
       costPerUnit: c,
       nicotineMg: mg > 0 ? mg : undefined,
-      flavour: flavour.trim() ? flavour.trim() : undefined,
+      flavours: selectedFlavours.length > 0 ? selectedFlavours : undefined,
+      // The library array is the single source of truth now; clear the
+      // legacy single-flavour field so the two can never disagree.
+      flavour: undefined,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -230,11 +252,24 @@ export default function Settings() {
         onChangeText={setNicotineText}
         keyboardType="decimal-pad"
       />
-      <Field
-        label="Your usual flavour (optional)"
-        value={flavour}
-        onChangeText={setFlavourText}
-        placeholder="e.g. Mint"
+      <Label style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
+        Your flavours
+      </Label>
+      {savedFlavoursLine ? (
+        <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+          On your plan right now: {savedFlavoursLine}.
+        </Body>
+      ) : (
+        <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+          None picked yet. Add the ones you used, if you like.
+        </Body>
+      )}
+      <FlavourPicker
+        selected={selectedFlavours}
+        onToggle={toggleFlavour}
+        customText={customFlavour}
+        onCustomTextChange={setCustomFlavour}
+        onAddCustom={addCustomFlavour}
       />
       <PrimaryButton title={saved ? 'Saved' : 'Save habit numbers'} onPress={savePlan} />
 

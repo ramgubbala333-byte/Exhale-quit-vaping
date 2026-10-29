@@ -1,8 +1,25 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Body, Display, GhostButton, Label, Screen } from '@/components/ui';
 import { colors, fonts, radii, spacing } from '@/theme';
+
+function FaqRow({
+  q,
+  a,
+  last = false,
+}: {
+  q: string;
+  a: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.faqRow, last && { borderBottomWidth: 0 }]}>
+      <Text style={styles.faqQ}>{q}</Text>
+      <Text style={styles.faqA}>{a}</Text>
+    </View>
+  );
+}
 
 export default function About() {
   return (
@@ -64,6 +81,37 @@ export default function About() {
         launches, everything you use today stays free.
       </Body>
 
+      <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+        Questions, answered plainly
+      </Label>
+      <View>
+        <FaqRow
+          q="Is Mistless free?"
+          a="Yes, completely. The counter, SOS, lapse rescue, plans, missions and health timeline are free forever. A paid Plus tier may add extras one day; nothing you use now will move behind it."
+        />
+        <FaqRow
+          q="Do I need an account?"
+          a="No. There is no sign-up, no email, no password. You open the app and set your plan."
+        />
+        <FaqRow
+          q="What happens if I slip?"
+          a="Nothing is taken from you. Your lifetime totals, kept money and milestones stay banked. The rescue flow helps you name what happened, make one small plan for that moment, and resume. Comebacks are counted with pride in Stats."
+        />
+        <FaqRow
+          q="Does it work for disposables, pods and pouches?"
+          a="Yes. You set your own numbers in puffs or units per day and what each one costs, so disposables, pod systems, refillable tanks and nicotine pouches all fit the same math."
+        />
+        <FaqRow
+          q="Is my data private?"
+          a="Yes. Everything is stored on this phone only. No account, no server, no analytics, nothing sent anywhere. The only way data leaves is if you export it yourself from Settings."
+        />
+        <FaqRow
+          q="Is this a medical app?"
+          a="No. Mistless is not a medical device and does not diagnose, treat, cure, or prevent any condition. The health timeline is general population-level information from public sources like the WHO and CDC, not medical advice about you. Talk to a healthcare professional for medical advice, and call 1-800-QUIT-NOW (US) if cravings feel unmanageable."
+          last
+        />
+      </View>
+
       <View style={{ marginTop: spacing.xl }}>
         <GhostButton title="Back" onPress={() => router.back()} />
       </View>
@@ -72,6 +120,23 @@ export default function About() {
 }
 
 const styles = StyleSheet.create({
+  faqRow: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.lineStrong,
+  },
+  faqQ: {
+    fontFamily: fonts.display,
+    fontSize: 17,
+    color: colors.pineDeep,
+    marginBottom: 4,
+  },
+  faqA: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.inkMuted,
+  },
   privacyBand: {
     backgroundColor: colors.pine,
     borderRadius: radii.md,

@@ -48,6 +48,7 @@ export default function RootLayout() {
       }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="onboarding" />
+      <Stack.Screen name="reveal" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
         name="sos"

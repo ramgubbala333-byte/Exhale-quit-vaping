@@ -28,6 +28,7 @@ import {
   moneySaved,
   puffsAvoided,
 } from '@/lib/calc';
+import { identityVotes } from '@/lib/votes';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
 
@@ -36,6 +37,8 @@ export default function Stats() {
   const cravings = useStore((s) => s.cravings);
   const bestStreakSeconds = useStore((s) => s.bestStreakSeconds);
   const relapseCount = useStore((s) => s.relapseCount);
+  const rescueCount = useStore((s) => s.rescueCount);
+  const missionLog = useStore((s) => s.missionLog);
   const savingsGoal = useStore((s) => s.savingsGoal);
   const bankedMoney = useStore((s) => s.lifetimeMoneyBanked);
   const bankedPuffs = useStore((s) => s.lifetimePuffsBanked);
@@ -101,6 +104,12 @@ export default function Stats() {
   const lifetimePuffs = lifetimePuffsAvoided(plan, banked);
   const lifetimeUnits = lifetimeUnitsAvoided(plan, banked);
   const lifetimeFree = lifetimeFreeSeconds(plan, banked);
+  const missionsDone = missionLog.filter((m) => m.status === 'done').length;
+  const votes = identityVotes({
+    resistedCount: resisted,
+    missionsDone,
+    lifetimeFreeSeconds: lifetimeFree,
+  });
 
   return (
     <Screen>
@@ -160,9 +169,47 @@ export default function Stats() {
           value={formatDurationShort(longestStreak)}
         />
         <StatRow
+          label="Comebacks"
+          value={formatCount(rescueCount)}
+          detail="Times a slip ended in the rescue flow and a fresh start. Counted with pride, not shame."
+        />
+        <StatRow
           label="Restarts"
           value={formatCount(relapseCount)}
           detail="Each restart still counts. Quitting often takes a few runs."
+          last
+        />
+      </View>
+
+      <Label style={styles.sectionLabel}>Identity votes</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.sm }}>
+        {formatCount(votes.total)} votes for the person you are becoming.
+        Every resisted craving, finished mission, and full vape-free day
+        casts one. Votes are evidence, and evidence is never taken away:
+        a slip cannot uncast a single one.
+      </Body>
+      <View style={styles.ledger}>
+        <StatRow
+          label="Votes from cravings resisted"
+          value={formatCount(votes.fromResisted)}
+        />
+        <StatRow
+          label="Votes from missions completed"
+          value={formatCount(votes.fromMissions)}
+        />
+        <StatRow
+          label="Votes from full vape-free days"
+          value={formatCount(votes.fromDays)}
+          last
+        />
+      </View>
+
+      <Label style={styles.sectionLabel}>Daily missions</Label>
+      <View style={styles.ledger}>
+        <StatRow
+          label="Missions completed, all time"
+          value={formatCount(missionsDone)}
+          detail="One small task a day. Skips cost nothing and are not counted against you."
           last
         />
       </View>

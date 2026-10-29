@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
-import { Body, Display, PrimaryButton, Screen } from '@/components/ui';
+import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
 import { formatDateTime } from '@/lib/calc';
+import { promptForSlot, type PromptSlot } from '@/lib/prompts';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
 import type { JournalKind } from '@/types';
@@ -13,6 +14,8 @@ const KIND_LABEL: Record<JournalKind, string> = {
   resisted: 'Craving resisted',
   slip: 'Slip logged',
   reset: 'Clock restarted',
+  intention: 'Morning intention',
+  reflection: 'Evening reflection',
 };
 
 const KIND_COLOR: Record<JournalKind, string> = {
@@ -20,10 +23,26 @@ const KIND_COLOR: Record<JournalKind, string> = {
   resisted: colors.pine,
   slip: colors.clay,
   reset: colors.amber,
+  intention: colors.amber,
+  reflection: colors.pine,
 };
 
 export default function Journal() {
   const journal = useStore((s) => s.journal);
+  const now = new Date();
+  const hour = now.getHours();
+  const morningActive = hour < 12;
+  const eveningActive = hour >= 18;
+
+  const openPrompt = (slot: PromptSlot) => {
+    router.push({
+      pathname: '/note',
+      params: {
+        prompt: promptForSlot(slot, now),
+        kind: slot === 'morning' ? 'intention' : 'reflection',
+      },
+    });
+  };
 
   return (
     <Screen scroll={false}>
@@ -35,6 +54,31 @@ export default function Journal() {
         Craving outcomes land here automatically. Add your own notes any
         time; future you will want the record.
       </Body>
+
+      <BookendRow
+        slot="morning"
+        title="Morning intention"
+        active={morningActive}
+        activeHint="Set the day before it sets you. Tap to write."
+        quietText={
+          hour >= 12
+            ? 'The morning intention returns tomorrow.'
+            : 'The morning intention is done for today.'
+        }
+        onPress={() => openPrompt('morning')}
+      />
+      <BookendRow
+        slot="evening"
+        title="Evening reflection"
+        active={eveningActive}
+        activeHint="Close the day honestly. Tap to write."
+        quietText={
+          hour < 18
+            ? 'The evening reflection opens at 6 PM.'
+            : 'The evening reflection returns tomorrow.'
+        }
+        onPress={() => openPrompt('evening')}
+      />
 
       {journal.length === 0 ? (
         <View style={styles.empty}>
@@ -78,7 +122,87 @@ export default function Journal() {
   );
 }
 
+/**
+ * One journal bookend. In its hours it is a live prompt card; outside
+ * them it rests as a quiet row saying when it returns, so the ritual
+ * has edges instead of nagging all day.
+ */
+function BookendRow({
+  slot,
+  title,
+  active,
+  activeHint,
+  quietText,
+  onPress,
+}: {
+  slot: PromptSlot;
+  title: string;
+  active: boolean;
+  activeHint: string;
+  quietText: string;
+  onPress: () => void;
+}) {
+  if (!active) {
+    return (
+      <View style={styles.bookendQuiet}>
+        <Text style={styles.bookendQuietTitle}>{title}</Text>
+        <Text style={styles.bookendQuietText}>{quietText}</Text>
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.bookendCard,
+        { opacity: pressed ? 0.85 : 1 },
+      ]}>
+      <Label color={colors.amberBright}>{title}</Label>
+      <Text style={styles.bookendPrompt}>{promptForSlot(slot, new Date())}</Text>
+      <Text style={styles.bookendHint}>{activeHint}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  bookendCard: {
+    backgroundColor: colors.pine,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  bookendPrompt: {
+    fontFamily: fonts.display,
+    fontSize: 19,
+    lineHeight: 27,
+    color: colors.bg,
+    marginTop: spacing.xs,
+  },
+  bookendHint: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.pineSoft,
+    marginTop: spacing.sm,
+  },
+  bookendQuiet: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.lineStrong,
+    marginBottom: spacing.md,
+  },
+  bookendQuietTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
+  bookendQuietText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+  },
   empty: {
     flex: 1,
     alignItems: 'center',

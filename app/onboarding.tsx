@@ -3,7 +3,7 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, StyleSheet, Text, View } from 'react-native';
 
 import FlavourPicker from '@/components/FlavourPicker';
 import IfThenPlanForm from '@/components/IfThenPlanForm';
@@ -27,7 +27,9 @@ import {
   taperZeroDate,
 } from '@/lib/calc';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
+
+const welcomeMist = require('../assets/illustrations/01-welcome-mist.jpg');
 import type { DeviceType, Plan, QuitApproach } from '@/types';
 
 const DEVICE_OPTIONS: { value: DeviceType; label: string; unit: string }[] = [
@@ -240,6 +242,12 @@ export default function Onboarding() {
 
       {step === 0 && (
         <View>
+          <Image
+            source={welcomeMist}
+            style={styles.welcomeArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
+          />
           <Display size={42} style={{ marginBottom: spacing.md }}>
             Breathe out.{'\n'}For good.
           </Display>
@@ -717,6 +725,12 @@ function capitalize(s: string): string {
 }
 
 const styles = StyleSheet.create({
+  welcomeArt: {
+    width: '100%',
+    height: 210,
+    borderRadius: radii.md,
+    marginBottom: spacing.lg,
+  },
   progressRow: {
     flexDirection: 'row',
     marginBottom: spacing.lg,

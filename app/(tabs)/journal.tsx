@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
 import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
 import { formatDateTime } from '@/lib/calc';
 import { promptForSlot, type PromptSlot } from '@/lib/prompts';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
 import type { JournalKind } from '@/types';
+
+const journalTea = require('../../assets/illustrations/04-journal-tea.jpg');
 
 const KIND_LABEL: Record<JournalKind, string> = {
   note: 'Note',
@@ -82,6 +84,12 @@ export default function Journal() {
 
       {journal.length === 0 ? (
         <View style={styles.empty}>
+          <Image
+            source={journalTea}
+            style={styles.emptyArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of an open journal and a cup of tea under lamplight"
+          />
           <Text style={styles.emptyTitle}>Your story starts here</Text>
           <Body color={colors.inkMuted} style={{ textAlign: 'center' }}>
             Every craving you ride out lands here on its own. Or start
@@ -208,6 +216,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+  },
+  emptyArt: {
+    width: '100%',
+    height: 180,
+    borderRadius: radii.md,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
     fontFamily: fonts.display,

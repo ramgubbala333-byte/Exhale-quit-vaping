@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Modal, Share, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Modal, Share, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoneyExact } from '../lib/calc';
 import { haptics } from '../lib/haptics';
@@ -7,6 +7,8 @@ import type { MilestoneState } from '../lib/milestones';
 import { useReduceMotion } from '../lib/useReduceMotion';
 import { colors, fonts, radii, spacing } from '../theme';
 import { GhostButton, Label, PrimaryButton } from './ui';
+
+const milestoneDawn = require('../../assets/illustrations/03-milestone-dawn.jpg');
 
 /**
  * One-time celebration sheet shown when a health milestone is newly
@@ -85,6 +87,12 @@ export default function MilestoneCelebration({
       onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
+          <Image
+            source={milestoneDawn}
+            style={styles.headerArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of the window at clear dawn, the mist gone"
+          />
           <View style={styles.sealWrap}>
             <Animated.View
               style={[
@@ -126,6 +134,12 @@ export default function MilestoneCelebration({
 }
 
 const styles = StyleSheet.create({
+  headerArt: {
+    width: '100%',
+    height: 150,
+    borderRadius: radii.md,
+    marginBottom: spacing.lg,
+  },
   sealWrap: {
     width: 120,
     height: 120,

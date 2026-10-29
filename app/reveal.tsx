@@ -1,12 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
 import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
 import { dailyCost, formatCount, formatMoney } from '@/lib/calc';
 import { nextMilestone } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
+
+const planDesk = require('../assets/illustrations/02-plan-desk.jpg');
 
 /**
  * The endowed-progress plan reveal. Shown right after onboarding and
@@ -35,6 +37,12 @@ export default function Reveal() {
   return (
     <Screen>
       <MaxWidth>
+        <Image
+          source={planDesk}
+          style={styles.headerArt}
+          resizeMode="cover"
+          accessibilityLabel="Watercolor illustration of a desk at dusk with a lamp, an open notebook, and a phone face-down"
+        />
         <Label color={colors.amber}>Your plan</Label>
         <Display size={34} style={{ marginTop: spacing.xs }}>
           Your plan is already moving
@@ -133,6 +141,12 @@ function RevealLine({
 }
 
 const styles = StyleSheet.create({
+  headerArt: {
+    width: '100%',
+    height: 200,
+    borderRadius: radii.md,
+    marginBottom: spacing.lg,
+  },
   stamps: {
     marginTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,

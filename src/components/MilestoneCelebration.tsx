@@ -1,7 +1,10 @@
-import { Modal, Share, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Modal, Share, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoneyExact } from '../lib/calc';
+import { haptics } from '../lib/haptics';
 import type { MilestoneState } from '../lib/milestones';
+import { useReduceMotion } from '../lib/useReduceMotion';
 import { colors, fonts, radii, spacing } from '../theme';
 import { GhostButton, Label, PrimaryButton } from './ui';
 
@@ -22,6 +25,45 @@ export default function MilestoneCelebration({
   moneyKept: number;
   onDismiss: () => void;
 }) {
+  const reduceMotion = useReduceMotion();
+  // Seal-stamp: the milestone mark lands like a stamp, scale 1.6 to 1
+  // with a spring, trailed by a single pine ring pulse. Total motion is
+  // under 1.2 seconds, no particles. Reduce-motion settles it instantly.
+  const stampScale = useRef(new Animated.Value(1)).current;
+  const ringScale = useRef(new Animated.Value(1)).current;
+  const ringOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!milestone) return;
+    haptics.success();
+    if (reduceMotion) {
+      stampScale.setValue(1);
+      ringOpacity.setValue(0);
+      return;
+    }
+    stampScale.setValue(1.6);
+    ringScale.setValue(1);
+    ringOpacity.setValue(0.55);
+    Animated.parallel([
+      Animated.spring(stampScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 110,
+        useNativeDriver: true,
+      }),
+      Animated.timing(ringScale, {
+        toValue: 2,
+        duration: 750,
+        useNativeDriver: true,
+      }),
+      Animated.timing(ringOpacity, {
+        toValue: 0,
+        duration: 750,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [milestone, reduceMotion, stampScale, ringScale, ringOpacity]);
+
   const shareText = milestone
     ? `Milestone reached with Mistless: ${milestone.label} — ${milestone.title}. ` +
       `${daysFree} day${daysFree === 1 ? '' : 's'} vape-free and ${formatMoneyExact(moneyKept)} kept so far.`
@@ -43,6 +85,26 @@ export default function MilestoneCelebration({
       onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
+          <View style={styles.sealWrap}>
+            <Animated.View
+              style={[
+                styles.sealRing,
+                {
+                  transform: [{ scale: ringScale }],
+                  opacity: ringOpacity,
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.seal,
+                { transform: [{ scale: stampScale }] },
+              ]}>
+              <Text maxFontSizeMultiplier={1.2} style={styles.sealText}>
+                {milestone?.label}
+              </Text>
+            </Animated.View>
+          </View>
           <Label color={colors.amber}>Milestone reached</Label>
           <Text maxFontSizeMultiplier={1.3} style={styles.title}>
             {milestone?.label}: {milestone?.title}
@@ -64,6 +126,38 @@ export default function MilestoneCelebration({
 }
 
 const styles = StyleSheet.create({
+  sealWrap: {
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  sealRing: {
+    position: 'absolute',
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 2,
+    borderColor: colors.amberBright,
+  },
+  seal: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 2,
+    borderColor: colors.amberBright,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  sealText: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    lineHeight: 21,
+    color: colors.bg,
+    textAlign: 'center',
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(12, 46, 40, 0.55)',

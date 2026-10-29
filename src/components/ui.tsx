@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { haptics } from '../lib/haptics';
 import { colors, fonts, radii, spacing } from '../theme';
 
 /** Page shell: warm background, safe areas, consistent horizontal padding. */
@@ -49,6 +50,7 @@ export function Display({
 }) {
   return (
     <Text
+      maxFontSizeMultiplier={1.3}
       style={[
         { fontFamily: fonts.display, fontSize: size, color, lineHeight: size * 1.15 },
         style,
@@ -111,15 +113,23 @@ export function PrimaryButton({
   onPress,
   tone = 'pine',
   disabled = false,
+  haptic = 'tap',
 }: {
   title: string;
   onPress?: () => void;
   tone?: 'pine' | 'amber';
   disabled?: boolean;
+  /** Which word of the haptic vocabulary fires on press. */
+  haptic?: 'tap' | 'commit' | 'success' | 'none';
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        if (haptic === 'tap') haptics.tap();
+        else if (haptic === 'commit') haptics.commit();
+        else if (haptic === 'success') haptics.success();
+        onPress?.();
+      }}
       disabled={disabled}
       style={({ pressed }) => [
         styles.button,
@@ -172,7 +182,10 @@ export function Chip({
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptics.tick();
+        onPress();
+      }}
       style={[
         styles.chip,
         {

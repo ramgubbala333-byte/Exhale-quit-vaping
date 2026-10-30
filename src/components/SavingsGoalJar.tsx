@@ -1,29 +1,18 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, formatMoneyExact, savingsGoalPercent } from '../lib/calc';
 import type { SavingsGoal } from '../types';
-import { colors, fonts, radii, spacing } from '../theme';
+import { colors, fonts, spacing } from '../theme';
+import { CoinJar } from './CoinJar';
 import { Label } from './ui';
 
-/** Animates a 0..1 value toward the goal percent whenever it changes. */
-function useAnimatedPercent(percent: number) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: Math.min(1, Math.max(0, percent / 100)),
-      duration: 900,
-      useNativeDriver: false,
-    }).start();
-  }, [anim, percent]);
-  return anim;
-}
-
 /**
- * The savings goal jar: money kept fills a jar toward the price of the
- * thing the user is saving for. Fill is computed from real saved money
- * (lifetime total, so restarts never drain the jar), and the amber
- * level animates to the true percentage whenever it changes.
+ * The savings goal, drawn as the coin jar: money kept fills a glass jar
+ * with coins toward the price of the thing the user is saving for.
+ * Coins are computed from real saved money (lifetime total, so a slip
+ * or a restart never takes a coin back out), and new coins drop in
+ * when the jar is next seen (see CoinJar). The words stay plain ledger
+ * text beside the jar: goal, kept so far, still to go.
  */
 export function SavingsGoalJar({
   goal,
@@ -33,20 +22,14 @@ export function SavingsGoalJar({
   moneyKept: number;
 }) {
   const percent = savingsGoalPercent(goal, moneyKept) ?? 0;
-  const anim = useAnimatedPercent(percent);
-  const fillHeight = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
   return (
     <View style={styles.jarWrap}>
-      <View style={styles.jar}>
-        <Animated.View style={[styles.jarFill, { height: fillHeight }]} />
-        <View style={styles.jarPercentWrap} pointerEvents="none">
-          <Text maxFontSizeMultiplier={1.2} style={styles.jarPercent}>
-            {Math.floor(percent)}%
-          </Text>
-        </View>
+      <View style={styles.jarSlot}>
+        <CoinJar
+          moneyKept={moneyKept}
+          height={150}
+          percentLabel={`${Math.floor(percent)}%`}
+        />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.goalName}>{goal.name}</Text>
@@ -64,7 +47,7 @@ export function SavingsGoalJar({
   );
 }
 
-/** Compact one-line version of the same progress, for the Home screen. */
+/** Compact version of the same jar, for the Home screen strip. */
 export function SavingsGoalStrip({
   goal,
   moneyKept,
@@ -73,64 +56,26 @@ export function SavingsGoalStrip({
   moneyKept: number;
 }) {
   const percent = savingsGoalPercent(goal, moneyKept) ?? 0;
-  const anim = useAnimatedPercent(percent);
-  const fillWidth = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
   return (
     <View style={styles.strip}>
-      <View style={styles.stripHead}>
-        <Label color={colors.pine}>Saving toward: {goal.name}</Label>
-        <Text style={styles.stripPercent}>{Math.floor(percent)}% there</Text>
+      <View style={styles.stripRow}>
+        <CoinJar moneyKept={moneyKept} height={84} />
+        <View style={styles.stripText}>
+          <Label color={colors.pine}>Saving toward: {goal.name}</Label>
+          <Text style={styles.stripPercent}>{Math.floor(percent)}% there</Text>
+          <Text style={styles.stripDetail}>
+            {formatMoneyExact(Math.min(moneyKept, goal.price))} of{' '}
+            {formatMoney(goal.price)} covered by money kept
+          </Text>
+        </View>
       </View>
-      <View style={styles.stripTrack}>
-        <Animated.View style={[styles.stripFill, { width: fillWidth }]} />
-      </View>
-      <Text style={styles.stripDetail}>
-        {formatMoneyExact(Math.min(moneyKept, goal.price))} of{' '}
-        {formatMoney(goal.price)} covered by money kept
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   jarWrap: { flexDirection: 'row', alignItems: 'center' },
-  jar: {
-    width: 84,
-    height: 120,
-    borderWidth: 2,
-    borderColor: colors.pine,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    marginRight: spacing.lg,
-  },
-  jarFill: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.amberBright,
-    opacity: 0.8,
-  },
-  jarPercentWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  jarPercent: {
-    fontFamily: fonts.displayBold,
-    fontSize: 26,
-    color: colors.pineDeep,
-    textAlign: 'center',
-  },
+  jarSlot: { marginRight: spacing.lg },
   goalName: {
     fontFamily: fonts.display,
     fontSize: 20,
@@ -158,32 +103,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: 14,
     padding: spacing.md,
     marginTop: spacing.lg,
   },
-  stripHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-  },
+  stripRow: { flexDirection: 'row', alignItems: 'center' },
+  stripText: { flex: 1, marginLeft: spacing.md },
   stripPercent: {
     fontFamily: fonts.display,
     fontSize: 15,
     color: colors.pine,
+    marginTop: spacing.xs,
   },
-  stripTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.surfaceMuted,
-    overflow: 'hidden',
-    marginTop: spacing.sm,
-  },
-  stripFill: { height: '100%', backgroundColor: colors.amberBright },
   stripDetail: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.inkMuted,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
 });

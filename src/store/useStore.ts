@@ -61,6 +61,13 @@ interface ExhaleState {
   taperPuffs: PuffEvent[];
   /** The thing the user is saving their kept money toward, if set. */
   savingsGoal: SavingsGoal | null;
+  /**
+   * Lifetime money kept as it stood the last time the coin jar was seen
+   * settled. The jar compares against this to know how many coins are
+   * new and worth dropping in; it only ever moves up to the current
+   * total (a full reset clears it along with everything else).
+   */
+  jarSeenMoney: number;
 
   /** If-then craving plans built in onboarding / Settings / rescue. */
   cravingPlans: CravingPlan[];
@@ -112,6 +119,8 @@ interface ExhaleState {
   /** Logs one puff against today's taper budget. */
   logPuff: () => void;
   setSavingsGoal: (goal: SavingsGoal | null) => void;
+  /** Marks the coin jar as caught up to this lifetime-kept amount. */
+  setJarSeenMoney: (v: number) => void;
   /**
    * If a taper's flip moment has arrived (quit day reached, or the budget
    * compounded to zero), convert the plan into a full quit from that
@@ -142,6 +151,7 @@ export const useStore = create<ExhaleState>()(
       lifetimeFreeSecondsBanked: 0,
       taperPuffs: [],
       savingsGoal: null,
+      jarSeenMoney: 0,
       cravingPlans: [],
       missionLog: [],
       supportName: null,
@@ -243,6 +253,8 @@ export const useStore = create<ExhaleState>()(
 
       setSavingsGoal: (goal) => set({ savingsGoal: goal }),
 
+      setJarSeenMoney: (v) => set({ jarSeenMoney: v }),
+
       advanceTaperIfReady: () => {
         const { plan } = get();
         if (!plan || !isTaperPlan(plan) || plan.taperCompleted) return;
@@ -324,6 +336,7 @@ export const useStore = create<ExhaleState>()(
           lifetimeFreeSecondsBanked: 0,
           taperPuffs: [],
           savingsGoal: null,
+          jarSeenMoney: 0,
           cravingPlans: [],
           missionLog: [],
           supportName: null,
@@ -349,6 +362,7 @@ export const useStore = create<ExhaleState>()(
         lifetimeFreeSecondsBanked: s.lifetimeFreeSecondsBanked,
         taperPuffs: s.taperPuffs,
         savingsGoal: s.savingsGoal,
+        jarSeenMoney: s.jarSeenMoney,
         cravingPlans: s.cravingPlans,
         missionLog: s.missionLog,
         supportName: s.supportName,

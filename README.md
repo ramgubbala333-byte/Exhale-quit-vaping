@@ -301,6 +301,14 @@ To enable RevenueCat later:
    `purchasePackage`, `getCustomerInfo`), then point the paywall's
    price constants at the live offerings.
 
+## Native build list
+
+Features that need a native (EAS) build rather than Expo Go, in the
+order they will be picked up:
+
+1. Home-screen widget: quit timer, money kept, one-tap SOS (owner's
+   top native-build priority, set Oct 29, 2026).
+
 ## Verification (latest pass)
 
 - `npx tsc --noEmit` — passes (the root tsconfig excludes the standalone

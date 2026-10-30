@@ -36,11 +36,14 @@ export default function WeekDots({
   cravings,
   journal,
   now,
+  style,
 }: {
   plan: Plan;
   cravings: CravingEvent[];
   journal: JournalEntry[];
   now: Date;
+  /** Merged over the wrap style (e.g. marginTop: 0 inside a card). */
+  style?: object;
 }) {
   const dots = useMemo<DayDot[]>(() => {
     const windowStart = startOfDay(
@@ -81,7 +84,7 @@ export default function WeekDots({
   }, [plan, cravings, journal, now]);
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, style]}>
       <Label color={colors.pine}>Your week</Label>
       <View style={styles.row}>
         {dots.map((d) => (

@@ -7,7 +7,6 @@ import MaxWidth from '@/components/MaxWidth';
 import MilestoneCelebration from '@/components/MilestoneCelebration';
 import QuitTimer from '@/components/QuitTimer';
 import RecoveryRings from '@/components/RecoveryRings';
-import { SavingsGoalStrip } from '@/components/SavingsGoalJar';
 import WeekDots from '@/components/WeekDots';
 import {
   Body,
@@ -19,6 +18,11 @@ import {
   StatRow,
 } from '@/components/ui';
 import {
+  ACHIEVEMENTS,
+  type AchievementContext,
+} from '@/lib/achievements';
+import {
+  SECONDS_PER_DAY,
   daysUntilFlip,
   elapsedDays,
   elapsedSeconds,
@@ -27,8 +31,10 @@ import {
   isTaperActive,
   lifetimeFreeSeconds,
   lifetimeMoneySaved,
+  lifetimePuffsAvoided,
   moneySaved,
   puffsAvoided,
+  savingsGoalPercent,
   taperBudgetForWeek,
   taperBudgetToday,
   taperWeekIndex,
@@ -147,6 +153,32 @@ export default function Home() {
   const streakSeconds = elapsedSeconds(plan, now);
   const taperActive = isTaperActive(plan, now);
 
+  // The hero label names the moment the way the timer counts it:
+  // still inside the first day it is the first hours, one full day
+  // banked is the first day, after that plain day numbers.
+  const streakDays = Math.floor(streakSeconds / SECONDS_PER_DAY);
+  const momentLabel =
+    streakDays === 1
+      ? 'Your first day'
+      : streakDays > 1
+        ? `Day ${streakDays}`
+        : 'Your first hours';
+
+  // Badge strip math: the same live context the Achievements grid
+  // uses, so the counts can never drift apart.
+  const achievementCtx: AchievementContext = {
+    elapsedSeconds: streakSeconds,
+    resistedCount: resisted,
+    moneySaved: moneySaved(plan, now),
+    unitsAvoided: unitsAvoided(plan, now),
+    puffsAvoided: puffsAvoided(plan, now),
+    lifetimePuffsAvoided: lifetimePuffsAvoided(plan, banked, now),
+    savingsGoalPercent: savingsGoalPercent(savingsGoal, lifetimeSaved),
+    taperCompleted: plan.taperCompleted === true,
+  };
+  const earnedBadges = ACHIEVEMENTS.filter((a) => a.earned(achievementCtx));
+  const nextBadge = ACHIEVEMENTS.find((a) => !a.earned(achievementCtx));
+
   const todayKey = localDateKey(now);
   const mission = missionForDate(now);
   const missionRecord = missionLog.find((m) => m.date === todayKey);
@@ -190,34 +222,99 @@ export default function Home() {
         />
       ) : (
         <>
-          <Label style={{ marginTop: spacing.lg }}>Nicotine-free for</Label>
+          <Label color={colors.amber} style={{ marginTop: spacing.xl }}>
+            {momentLabel}
+          </Label>
           <QuitTimer plan={plan} />
 
           <Text maxFontSizeMultiplier={1.3} style={styles.dailyLine}>
             {dailyLine(now)}
           </Text>
+        </>
+      )}
 
-          <CoinCollector moneyKept={lifetimeSaved} />
+      {/* The savings card: coins, kept total, and the goal line when
+          one is set. Tapping it opens Stats. */}
+      <CoinCollector
+        moneyKept={lifetimeSaved}
+        goal={savingsGoal}
+        onPress={() => router.push('/(tabs)/stats')}
+      />
 
-          <View style={styles.ledger}>
-            <StatRow
-              label="Puffs avoided"
-              value={formatCount(puffsAvoided(plan, now))}
-            />
-            <StatRow
-              label="Pods and devices not bought"
-              value={unitsAvoided(plan, now).toFixed(1)}
-            />
-            <StatRow
-              label="Cravings resisted"
-              value={formatCount(resisted)}
-            />
-            <StatRow
-              label="Current streak"
-              value={formatDurationShort(streakSeconds)}
-              last
-            />
+      {/* Craving help sits directly under the savings card, never
+          below a screenful of cards. */}
+      <Pressable
+        onPress={() => router.push('/sos')}
+        style={({ pressed }) => [
+          styles.sosButton,
+          { opacity: pressed ? 0.88 : 1 },
+        ]}>
+        <Text style={styles.sosTitle}>I have a craving</Text>
+        <Text style={styles.sosSub}>
+          Ride it out with a 3-minute breathing session
+        </Text>
+      </Pressable>
+
+      {!taperActive && (
+        <>
+          <View style={styles.statPair}>
+            <View style={[styles.statCard, styles.statCardLeft]}>
+              <Label color={colors.pine}>Puffs avoided</Label>
+              <Text maxFontSizeMultiplier={1.3} style={styles.statNumber}>
+                {formatCount(puffsAvoided(plan, now))}
+              </Text>
+              <Text style={styles.statSub}>
+                {formatCount(resisted)} craving{resisted === 1 ? '' : 's'}{' '}
+                resisted
+              </Text>
+            </View>
+            <View style={styles.statCard}>
+              <Label color={colors.pine}>Devices not bought</Label>
+              <Text maxFontSizeMultiplier={1.3} style={styles.statNumber}>
+                {unitsAvoided(plan, now).toFixed(1)}
+              </Text>
+              <Text style={styles.statSub}>
+                Streak {formatDurationShort(streakSeconds)}
+              </Text>
+            </View>
           </View>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/milestones')}
+            style={({ pressed }) => [
+              styles.badgeCard,
+              { opacity: pressed ? 0.92 : 1 },
+            ]}>
+            <View style={styles.badgeMarks}>
+              {earnedBadges.slice(0, 3).map((a, i) => (
+                <View
+                  key={a.id}
+                  style={[styles.badgeMark, i > 0 && styles.badgeMarkOverlap]}>
+                  <Text style={styles.badgeMarkText}>{a.mark}</Text>
+                </View>
+              ))}
+              {earnedBadges.length === 0 && (
+                <View style={[styles.badgeMark, styles.badgeMarkEmpty]}>
+                  <Text
+                    style={[styles.badgeMarkText, { color: colors.inkFaint }]}>
+                    0
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Label color={colors.pine}>Badges</Label>
+              <Text style={styles.badgeCount}>
+                {earnedBadges.length} of {ACHIEVEMENTS.length} earned
+              </Text>
+              <Text style={styles.badgeNext}>
+                {nextBadge
+                  ? `Next: ${nextBadge.title}`
+                  : 'Every badge earned. Remarkable.'}
+              </Text>
+            </View>
+            <Text style={styles.noteChevron}>›</Text>
+          </Pressable>
 
           <View style={styles.votesRow}>
             <View style={styles.votesPill}>
@@ -230,9 +327,44 @@ export default function Home() {
             </Text>
           </View>
 
-          <WeekDots plan={plan} cravings={cravings} journal={journal} now={now} />
+          <View style={styles.card}>
+            <WeekDots
+              plan={plan}
+              cravings={cravings}
+              journal={journal}
+              now={now}
+              style={{ marginTop: 0 }}
+            />
+            <RecoveryRings
+              plan={plan}
+              now={now}
+              style={{ marginTop: spacing.lg }}
+            />
+          </View>
 
-          <RecoveryRings plan={plan} now={now} />
+          {next && (
+            <Pressable
+              onPress={() => router.push('/(tabs)/milestones')}
+              style={styles.milestoneTeaser}>
+              <View style={{ flex: 1 }}>
+                <Label color={colors.pine}>Next milestone</Label>
+                <Text style={styles.milestoneTitle}>
+                  {next.label}: {next.title}
+                </Text>
+                <Text style={styles.milestoneRemaining}>
+                  in {formatDurationShort(next.remainingSeconds)}
+                </Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { height: `${Math.round(progress * 100)}%` },
+                  ]}
+                />
+              </View>
+            </Pressable>
+          )}
 
           <View style={styles.homeArtFrame}>
             <Image
@@ -243,14 +375,6 @@ export default function Home() {
             />
           </View>
         </>
-      )}
-
-      {taperActive && <CoinCollector moneyKept={lifetimeSaved} />}
-
-      {savingsGoal && (
-        <Pressable onPress={() => router.push('/(tabs)/stats')}>
-          <SavingsGoalStrip goal={savingsGoal} moneyKept={lifetimeSaved} />
-        </Pressable>
       )}
 
       <View style={styles.missionCard}>
@@ -288,42 +412,6 @@ export default function Home() {
           </View>
         )}
       </View>
-
-      {!taperActive && next && (
-        <Pressable
-          onPress={() => router.push('/(tabs)/milestones')}
-          style={styles.milestoneTeaser}>
-          <View style={{ flex: 1 }}>
-            <Label color={colors.pine}>Next milestone</Label>
-            <Text style={styles.milestoneTitle}>
-              {next.label}: {next.title}
-            </Text>
-            <Text style={styles.milestoneRemaining}>
-              in {formatDurationShort(next.remainingSeconds)}
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { height: `${Math.round(progress * 100)}%` },
-              ]}
-            />
-          </View>
-        </Pressable>
-      )}
-
-      <Pressable
-        onPress={() => router.push('/sos')}
-        style={({ pressed }) => [
-          styles.sosButton,
-          { opacity: pressed ? 0.88 : 1 },
-        ]}>
-        <Text style={styles.sosTitle}>I have a craving</Text>
-        <Text style={styles.sosSub}>
-          Ride it out with a 3-minute breathing session
-        </Text>
-      </Pressable>
 
       <Pressable
         onPress={() => router.push('/note-to-self')}
@@ -454,6 +542,83 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.pine,
     marginTop: spacing.lg,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  statPair: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.md,
+    padding: spacing.md,
+  },
+  statCardLeft: { marginRight: spacing.sm },
+  statNumber: {
+    fontFamily: fonts.displayBold,
+    fontSize: 32,
+    lineHeight: 38,
+    color: colors.pineDeep,
+    marginTop: spacing.xs,
+  },
+  statSub: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkMuted,
+    marginTop: 2,
+  },
+  badgeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  badgeMarks: {
+    flexDirection: 'row',
+    marginRight: spacing.md,
+  },
+  badgeMark: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.pine,
+    borderWidth: 2,
+    borderColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeMarkOverlap: { marginLeft: -10 },
+  badgeMarkEmpty: { backgroundColor: colors.surfaceMuted },
+  badgeMarkText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    color: colors.amberBright,
+  },
+  badgeCount: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: colors.ink,
+    marginTop: 2,
+  },
+  badgeNext: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkMuted,
+    marginTop: 2,
   },
   ledger: {
     marginTop: spacing.lg,

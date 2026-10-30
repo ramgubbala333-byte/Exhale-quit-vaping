@@ -23,12 +23,15 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 export default function RecoveryRings({
   plan,
   now,
+  style,
 }: {
   plan: Plan;
   now: Date;
+  /** Merged over the wrap style (e.g. a smaller marginTop inside a card). */
+  style?: object;
 }) {
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, style]}>
       <Label color={colors.pine}>Your body, recovering</Label>
       <View style={styles.ringRow}>
         {RECOVERY_TRACKS.map((track) => {

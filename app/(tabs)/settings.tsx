@@ -34,6 +34,7 @@ import {
   refreshAllNotifications,
 } from '@/lib/notifications';
 import { MAX_CRAVING_PLANS } from '@/lib/plans';
+import { REASON_OPTIONS } from '@/lib/reasons';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
 import type { DeviceType } from '@/types';
@@ -73,6 +74,9 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [supportText, setSupportText] = useState<string | null>(null);
   const [supportSaved, setSupportSaved] = useState(false);
+  const [reasonsSel, setReasonsSel] = useState<string[] | null>(null);
+  const [customReason, setCustomReason] = useState('');
+  const [reasonsSaved, setReasonsSaved] = useState(false);
   const [reminderPickerOpen, setReminderPickerOpen] = useState(false);
 
   if (!plan) return null;
@@ -202,6 +206,36 @@ export default function Settings() {
       setNotificationsEnabled(false);
       await cancelReminders();
     }
+  };
+
+  const selectedReasons = reasonsSel ?? plan.reasons;
+
+  const toggleReason = (r: string) =>
+    setReasonsSel((prev) => {
+      const base = prev ?? plan.reasons;
+      return base.includes(r) ? base.filter((x) => x !== r) : [...base, r];
+    });
+
+  const addCustomReason = () => {
+    const text = customReason.trim();
+    if (!text) return;
+    if (!selectedReasons.includes(text)) {
+      setReasonsSel([...selectedReasons, text]);
+    }
+    setCustomReason('');
+  };
+
+  const saveReasons = () => {
+    if (selectedReasons.length === 0) {
+      Alert.alert(
+        'Keep at least one reason',
+        'Your reasons are what Mistless hands back to you on hard days.',
+      );
+      return;
+    }
+    updatePlan({ reasons: selectedReasons });
+    setReasonsSaved(true);
+    setTimeout(() => setReasonsSaved(false), 2000);
   };
 
   const saveSupport = () => {
@@ -371,6 +405,45 @@ export default function Settings() {
         />
       )}
 
+      <Label style={styles.sectionLabel}>Your reasons</Label>
+      <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+        Why you are done. These are the lines on your Note to Self, and the
+        ones SOS hands back to you in a craving.
+      </Body>
+      <View style={styles.chipRow}>
+        {REASON_OPTIONS.map((r) => (
+          <Chip
+            key={r}
+            label={r}
+            selected={selectedReasons.includes(r)}
+            onPress={() => toggleReason(r)}
+          />
+        ))}
+        {selectedReasons
+          .filter((r) => !REASON_OPTIONS.includes(r))
+          .map((r) => (
+            <Chip
+              key={r}
+              label={r}
+              selected
+              onPress={() => toggleReason(r)}
+            />
+          ))}
+      </View>
+      <Field
+        label="Add your own reason"
+        value={customReason}
+        onChangeText={setCustomReason}
+        placeholder="e.g. To be present for my daughter"
+        returnKeyType="done"
+        onSubmitEditing={addCustomReason}
+      />
+      <GhostButton title="Add this reason" onPress={addCustomReason} />
+      <PrimaryButton
+        title={reasonsSaved ? 'Saved' : 'Save reasons'}
+        onPress={saveReasons}
+      />
+
       <Label style={styles.sectionLabel}>Your person</Label>
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         One name for the SOS "Message my person" button. Mistless never
@@ -538,6 +611,10 @@ export default function Settings() {
       <GhostButton
         title="My plan reveal"
         onPress={() => router.push('/reveal?from=settings')}
+      />
+      <GhostButton
+        title="Note to self"
+        onPress={() => router.push('/note-to-self')}
       />
       <GhostButton title="About Mistless" onPress={() => router.push('/about')} />
 

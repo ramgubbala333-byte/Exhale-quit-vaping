@@ -335,6 +335,19 @@ export default function Home() {
         </Text>
       </Pressable>
 
+      <Pressable
+        onPress={() => router.push('/note-to-self')}
+        style={styles.milestoneTeaser}>
+        <View style={{ flex: 1 }}>
+          <Label color={colors.pine}>Note to self</Label>
+          <Text style={styles.milestoneTitle}>Your day-one declaration</Text>
+          <Text style={styles.milestoneRemaining}>
+            Read it on the hard days. It is still true.
+          </Text>
+        </View>
+        <Text style={styles.noteChevron}>›</Text>
+      </Pressable>
+
       <Body
         size={13}
         color={colors.inkMuted}
@@ -484,6 +497,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.inkMuted,
     marginTop: 2,
+  },
+  noteChevron: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.amber,
+    alignSelf: 'center',
+    marginLeft: spacing.md,
   },
   progressTrack: {
     width: 6,

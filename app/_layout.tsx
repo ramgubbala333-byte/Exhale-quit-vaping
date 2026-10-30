@@ -56,6 +56,7 @@ export default function RootLayout() {
       />
       <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       <Stack.Screen name="note" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="note-to-self" options={{ presentation: 'modal' }} />
       <Stack.Screen name="about" options={{ presentation: 'modal' }} />
     </Stack>
   );

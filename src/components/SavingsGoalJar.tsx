@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatMoney, formatMoneyExact, savingsGoalPercent } from '../lib/calc';
 import type { SavingsGoal } from '../types';
 import { colors, fonts, spacing } from '../theme';
-import { CoinJar, coinsForMoney } from './CoinJar';
+import { CoinJar, coinBoxCaption, coinValueNote } from './CoinJar';
 import { Label } from './ui';
 
 /**
@@ -33,6 +33,7 @@ export function SavingsGoalJar({
         />
         <Text style={styles.jarCaption}>
           {formatMoneyExact(Math.min(moneyKept, goal.price))} kept so far
+          {coinValueNote(moneyKept) ? ` · ${coinValueNote(moneyKept)}` : ''}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
@@ -54,14 +55,10 @@ export function SavingsGoalJar({
  * kept total as a caption, so the coins are visible to everyone.
  */
 export function LifetimeCoinJar({ moneyKept }: { moneyKept: number }) {
-  const coins = coinsForMoney(moneyKept);
   return (
     <View style={styles.lifetimeWrap}>
       <CoinJar moneyKept={moneyKept} height={150} />
-      <Text style={styles.jarCaption}>
-        {formatMoneyExact(moneyKept)} kept · {coins} coin
-        {coins === 1 ? '' : 's'} in the box
-      </Text>
+      <Text style={styles.jarCaption}>{coinBoxCaption(moneyKept)}</Text>
     </View>
   );
 }

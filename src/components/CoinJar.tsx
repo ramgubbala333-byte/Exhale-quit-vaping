@@ -9,15 +9,24 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { formatMoneyExact } from '../lib/calc';
 import { haptics } from '../lib/haptics';
 import { useReduceMotion } from '../lib/useReduceMotion';
 import { useStore } from '../store/useStore';
 import { colors, fonts } from '../theme';
 
 /**
- * The coin jar: money kept becomes coins in a glass jar. One coin per
- * $2 of LIFETIME money kept (banked + current streak, so a slip never
- * takes a coin back out), capped at a full jar of 48.
+ * The coin jar: money kept becomes coins in a glass jar. Coins are
+ * minted from LIFETIME money kept (banked + current streak, so a slip
+ * never takes a coin back out), capped at a full jar of 48.
+ *
+ * Coin value is not fixed: the jar picks the smallest denomination
+ * ($0.25, $1, $5, $25) that keeps the pile at 48 coins or fewer, and
+ * re-mints the pile at the bigger value as savings grow. A quarter
+ * coin means day one already has coins in the box (an empty jar on
+ * day one is the opposite of motivating); by the time the jar would
+ * overflow quarters it switches to dollars, then fives, then
+ * twenty-fives, so the pile stays readable at every scale.
  *
  * The payoff the owner asked for: when the jar is seen again after the
  * kept total has grown (a resisted craving, another day banked), the
@@ -32,13 +41,56 @@ import { colors, fonts } from '../theme';
  * index, so the pile never reshuffles between renders.
  */
 
-export const DOLLARS_PER_COIN = 2;
 export const MAX_COINS = 48;
+/** Coin values in dollars, smallest first. */
+export const COIN_DENOMINATIONS = [0.25, 1, 5, 25];
 const MAX_ANIMATED_DROPS = 3;
+
+/**
+ * The denomination the jar is currently minting at: the smallest coin
+ * value whose pile fits the jar. Falls back to the largest value once
+ * even $25 coins would overflow (the pile just reads as full).
+ */
+export function coinDenomination(money: number): number {
+  if (!Number.isFinite(money) || money <= 0) return COIN_DENOMINATIONS[0];
+  for (const d of COIN_DENOMINATIONS) {
+    if (Math.floor(money / d) <= MAX_COINS) return d;
+  }
+  return COIN_DENOMINATIONS[COIN_DENOMINATIONS.length - 1];
+}
 
 export function coinsForMoney(money: number): number {
   if (!Number.isFinite(money) || money <= 0) return 0;
-  return Math.min(MAX_COINS, Math.floor(money / DOLLARS_PER_COIN));
+  return Math.min(MAX_COINS, Math.floor(money / coinDenomination(money)));
+}
+
+export function formatCoinValue(d: number): string {
+  return d < 1 ? `$${d.toFixed(2)}` : `$${d}`;
+}
+
+/**
+ * The honest fine print for a pile: what one coin is worth now, or,
+ * while the jar is still empty, when the first coin lands. Empty
+ * string when neither needs saying (quarter coins, pile non-empty).
+ */
+export function coinValueNote(money: number): string {
+  if (coinsForMoney(money) === 0) return 'first coin lands at $0.25';
+  const d = coinDenomination(money);
+  return d > COIN_DENOMINATIONS[0]
+    ? `each coin is now worth ${formatCoinValue(d)}`
+    : '';
+}
+
+/** The "kept · coins in the box" caption shared by the jar surfaces. */
+export function coinBoxCaption(money: number): string {
+  const kept = formatMoneyExact(money);
+  const n = coinsForMoney(money);
+  if (n === 0) return `${kept} kept · first coin lands at $0.25`;
+  const note = coinValueNote(money);
+  return (
+    `${kept} kept · ${n} coin${n === 1 ? '' : 's'} in the box` +
+    (note ? ` · ${note}` : '')
+  );
 }
 
 // --- Jar + pile geometry, in SVG viewBox units (124 x 168) ---
@@ -158,15 +210,22 @@ export function CoinJar({
     if (animatingRef.current || !focusedRef.current) return;
     const money = moneyRef.current;
     const total = coinsForMoney(money);
-    const seen = coinsForMoney(seenRef.current);
-    if (total <= seen) {
+    const seenMoney = seenRef.current;
+    // When growth crosses into a bigger denomination, the whole pile
+    // is re-minted at the new value and the old count means nothing;
+    // treat the pile as new so its top coins still get their drop.
+    const denomChanged =
+      coinDenomination(seenMoney) !== coinDenomination(money);
+    const seen = denomChanged ? 0 : coinsForMoney(seenMoney);
+    if (!denomChanged && total <= seen) {
       setSettled(total);
-      if (seenRef.current !== money) setJarSeenMoney(money);
+      if (seenMoney !== money) setJarSeenMoney(money);
       return;
     }
+    const newCoins = denomChanged ? total : total - seen;
     const dropCount = reduceRef.current
       ? 0
-      : Math.min(MAX_ANIMATED_DROPS, total - seen);
+      : Math.min(MAX_ANIMATED_DROPS, newCoins);
     if (dropCount === 0) {
       // Reduce-motion (or nothing new worth animating): final state.
       setSettled(total);

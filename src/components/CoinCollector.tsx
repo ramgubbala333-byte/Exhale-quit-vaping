@@ -1,8 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { formatMoneyExact } from '../lib/calc';
 import { colors, fonts, radii, spacing } from '../theme';
-import { CoinJar, coinsForMoney } from './CoinJar';
+import { CoinJar, coinBoxCaption } from './CoinJar';
 import { Label } from './ui';
 
 /**
@@ -15,17 +14,13 @@ import { Label } from './ui';
  * strip's smaller jar, when present, stays passive.
  */
 export function CoinCollector({ moneyKept }: { moneyKept: number }) {
-  const coins = coinsForMoney(moneyKept);
   return (
     <View style={styles.card}>
       <Label color={colors.pine}>Coin collector</Label>
       <View style={styles.jarSlot}>
         <CoinJar moneyKept={moneyKept} height={170} />
       </View>
-      <Text style={styles.caption}>
-        {formatMoneyExact(moneyKept)} kept · {coins} coin
-        {coins === 1 ? '' : 's'} in the box
-      </Text>
+      <Text style={styles.caption}>{coinBoxCaption(moneyKept)}</Text>
     </View>
   );
 }

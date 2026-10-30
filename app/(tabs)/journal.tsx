@@ -10,7 +10,6 @@ import { colors, fonts, radii, spacing } from '@/theme';
 import type { JournalKind } from '@/types';
 
 const journalTea = require('../../assets/illustrations/04-journal-tea.jpg');
-const eveningReflection = require('../../assets/illustrations/06-evening-reflection.jpg');
 
 const KIND_LABEL: Record<JournalKind, string> = {
   note: 'Note',
@@ -164,16 +163,6 @@ function BookendRow({
         styles.bookendCard,
         { opacity: pressed ? 0.85 : 1 },
       ]}>
-      {slot === 'evening' && (
-        <View style={styles.bookendArtFrame}>
-          <Image
-            source={eveningReflection}
-            style={styles.artFill}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of the window at night, moon above, a closed journal on the sill"
-          />
-        </View>
-      )}
       <Label color={colors.amberBright}>{title}</Label>
       <Text style={styles.bookendPrompt}>{promptForSlot(slot, new Date())}</Text>
       <Text style={styles.bookendHint}>{activeHint}</Text>
@@ -186,14 +175,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.pine,
     borderRadius: 14,
     padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  bookendArtFrame: {
-    width: '62%',
-    alignSelf: 'center',
-    aspectRatio: 1 / 2,
-    borderRadius: radii.md,
-    overflow: 'hidden',
     marginBottom: spacing.md,
   },
   artFill: {
@@ -244,7 +225,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyArtFrame: {
-    width: '100%',
+    width: '62%',
+    alignSelf: 'center',
     aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',

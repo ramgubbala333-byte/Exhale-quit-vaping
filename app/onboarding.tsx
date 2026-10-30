@@ -728,7 +728,8 @@ function capitalize(s: string): string {
 
 const styles = StyleSheet.create({
   welcomeArtFrame: {
-    width: '100%',
+    width: '62%',
+    alignSelf: 'center',
     aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',

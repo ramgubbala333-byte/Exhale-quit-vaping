@@ -242,12 +242,14 @@ export default function Onboarding() {
 
       {step === 0 && (
         <View>
-          <Image
-            source={welcomeMist}
-            style={styles.welcomeArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
-          />
+          <View style={styles.welcomeArtFrame}>
+            <Image
+              source={welcomeMist}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
+            />
+          </View>
           <Display size={42} style={{ marginBottom: spacing.md }}>
             Breathe out.{'\n'}For good.
           </Display>
@@ -725,11 +727,21 @@ function capitalize(s: string): string {
 }
 
 const styles = StyleSheet.create({
-  welcomeArt: {
+  welcomeArtFrame: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   progressRow: {
     flexDirection: 'row',

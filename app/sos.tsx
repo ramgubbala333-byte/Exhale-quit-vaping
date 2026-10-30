@@ -303,12 +303,14 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'menu' && (
         <View>
-          <Image
-            source={sosShore}
-            style={styles.headerArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of a calm shoreline at dawn, one wave receding"
-          />
+          <View style={styles.headerArtFrame}>
+            <Image
+              source={sosShore}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of a calm shoreline at dawn, one wave receding"
+            />
+          </View>
           <Label color={colors.amber}>Craving toolkit</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             Pick your tool
@@ -449,12 +451,14 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'why' && (
         <View>
-          <Image
-            source={supportLetter}
-            style={[styles.headerArt, { aspectRatio: 4 / 3 }]}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of a letter, a phone, and a cup of tea under lamplight"
-          />
+          <View style={styles.headerArtFrame}>
+            <Image
+              source={supportLetter}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of a letter, a phone, and a cup of tea under lamplight"
+            />
+          </View>
           <Label color={colors.amber}>Why cards</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
             Your reasons, up close
@@ -518,12 +522,14 @@ export default function Sos() {
 
       {!tagging && flow === 'slipped' && rescueStep === 0 && (
         <View>
-          <Image
-            source={rescueLamp}
-            style={[styles.headerArt, { aspectRatio: 4 / 3 }]}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of the desk after rain, the lamp lit again, a fresh blank page"
-          />
+          <View style={styles.headerArtFrame}>
+            <Image
+              source={rescueLamp}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of the desk after rain, the lamp lit again, a fresh blank page"
+            />
+          </View>
           <Label color={colors.clay}>Rescue, step 1 of 3</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             A slip is data, not a verdict
@@ -644,11 +650,21 @@ export default function Sos() {
 }
 
 const styles = StyleSheet.create({
-  headerArt: {
+  headerArtFrame: {
     width: '100%',
-    aspectRatio: 3 / 2,
+    aspectRatio: 4 / 3,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   toolRow: {

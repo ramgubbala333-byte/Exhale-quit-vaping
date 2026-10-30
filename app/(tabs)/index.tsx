@@ -246,12 +246,14 @@ export default function Home() {
 
           <RecoveryRings plan={plan} now={now} />
 
-          <Image
-            source={homeWindowsill}
-            style={styles.homeArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
-          />
+          <View style={styles.homeArtFrame}>
+            <Image
+              source={homeWindowsill}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
+            />
+          </View>
         </>
       )}
 
@@ -411,11 +413,21 @@ function TaperPanel({
 }
 
 const styles = StyleSheet.create({
-  homeArt: {
+  homeArtFrame: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginTop: spacing.xl,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   wordmarkRow: {
     flexDirection: 'row',

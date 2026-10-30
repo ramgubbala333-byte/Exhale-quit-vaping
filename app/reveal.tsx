@@ -37,12 +37,14 @@ export default function Reveal() {
   return (
     <Screen>
       <MaxWidth>
-        <Image
-          source={planDesk}
-          style={styles.headerArt}
-          resizeMode="cover"
-          accessibilityLabel="Watercolor illustration of a desk at dusk with a lamp, an open notebook, and a phone face-down"
-        />
+        <View style={styles.headerArtFrame}>
+          <Image
+            source={planDesk}
+            style={styles.artFill}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of a desk at dusk with a lamp, an open notebook, and a phone face-down"
+          />
+        </View>
         <Label color={colors.amber}>Your plan</Label>
         <Display size={34} style={{ marginTop: spacing.xs }}>
           Your plan is already moving
@@ -141,11 +143,21 @@ function RevealLine({
 }
 
 const styles = StyleSheet.create({
-  headerArt: {
+  headerArtFrame: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   stamps: {
     marginTop: spacing.lg,

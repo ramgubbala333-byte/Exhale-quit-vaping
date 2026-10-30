@@ -261,12 +261,14 @@ export default function Stats() {
       {savingsGoal && (
         <>
           <Label style={styles.sectionLabel}>Your savings goal</Label>
-          <Image
-            source={savingsJarArt}
-            style={styles.jarArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
-          />
+          <View style={styles.jarArtFrame}>
+            <Image
+              source={savingsJarArt}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
+            />
+          </View>
           <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
         </>
       )}
@@ -276,11 +278,21 @@ export default function Stats() {
 }
 
 const styles = StyleSheet.create({
-  jarArt: {
+  jarArtFrame: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: 14,
+    overflow: 'hidden',
     marginBottom: spacing.md,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   sectionLabel: { marginTop: spacing.xl, marginBottom: spacing.sm },
   chartCard: {

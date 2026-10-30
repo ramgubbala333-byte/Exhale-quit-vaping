@@ -87,12 +87,14 @@ export default function MilestoneCelebration({
       onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Image
-            source={milestoneDawn}
-            style={styles.headerArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of the window at clear dawn, the mist gone"
-          />
+          <View style={styles.headerArtFrame}>
+            <Image
+              source={milestoneDawn}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of the window at clear dawn, the mist gone"
+            />
+          </View>
           <View style={styles.sealWrap}>
             <Animated.View
               style={[
@@ -134,11 +136,21 @@ export default function MilestoneCelebration({
 }
 
 const styles = StyleSheet.create({
-  headerArt: {
+  headerArtFrame: {
     width: '100%',
     aspectRatio: 3 / 2,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   sealWrap: {
     width: 120,

@@ -85,12 +85,14 @@ export default function Journal() {
 
       {journal.length === 0 ? (
         <View style={styles.empty}>
-          <Image
-            source={journalTea}
-            style={styles.emptyArt}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of an open journal and a cup of tea under lamplight"
-          />
+          <View style={styles.emptyArtFrame}>
+            <Image
+              source={journalTea}
+              style={styles.artFill}
+              resizeMode="cover"
+              accessibilityLabel="Watercolor illustration of an open journal and a cup of tea under lamplight"
+            />
+          </View>
           <Text style={styles.emptyTitle}>Your story starts here</Text>
           <Body color={colors.inkMuted} style={{ textAlign: 'center' }}>
             Every craving you ride out lands here on its own. Or start
@@ -163,12 +165,14 @@ function BookendRow({
         { opacity: pressed ? 0.85 : 1 },
       ]}>
       {slot === 'evening' && (
-        <Image
-          source={eveningReflection}
-          style={styles.bookendArt}
-          resizeMode="cover"
-          accessibilityLabel="Watercolor illustration of the window at night, moon above, a closed journal on the sill"
-        />
+        <View style={styles.bookendArtFrame}>
+          <Image
+            source={eveningReflection}
+            style={styles.artFill}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of the window at night, moon above, a closed journal on the sill"
+          />
+        </View>
       )}
       <Label color={colors.amberBright}>{title}</Label>
       <Text style={styles.bookendPrompt}>{promptForSlot(slot, new Date())}</Text>
@@ -184,11 +188,21 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  bookendArt: {
+  bookendArtFrame: {
     width: '100%',
     aspectRatio: 3 / 2,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.md,
+  },
+  artFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   bookendPrompt: {
     fontFamily: fonts.display,
@@ -228,10 +242,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.lg,
   },
-  emptyArt: {
+  emptyArtFrame: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radii.md,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
   },
   emptyTitle: {

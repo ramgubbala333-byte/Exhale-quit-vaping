@@ -136,7 +136,7 @@ export default function MilestoneCelebration({
 const styles = StyleSheet.create({
   headerArt: {
     width: '100%',
-    height: 150,
+    aspectRatio: 3 / 2,
     borderRadius: radii.md,
     marginBottom: spacing.lg,
   },

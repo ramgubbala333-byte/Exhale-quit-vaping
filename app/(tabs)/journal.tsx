@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
 import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
@@ -10,6 +10,7 @@ import { colors, fonts, radii, spacing } from '@/theme';
 import type { JournalKind } from '@/types';
 
 const journalTea = require('../../assets/illustrations/04-journal-tea.jpg');
+const eveningReflection = require('../../assets/illustrations/06-evening-reflection.jpg');
 
 const KIND_LABEL: Record<JournalKind, string> = {
   note: 'Note',
@@ -47,7 +48,7 @@ export default function Journal() {
   };
 
   return (
-    <Screen scroll={false}>
+    <Screen>
       <MaxWidth>
       <Display size={32}>Journal</Display>
       <Body
@@ -97,13 +98,9 @@ export default function Journal() {
           </Body>
         </View>
       ) : (
-        <FlatList
-          data={journal}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing.lg }}
-          renderItem={({ item }) => (
-            <View style={styles.entry}>
+        <View style={{ paddingBottom: spacing.lg }}>
+          {journal.map((item) => (
+            <View key={item.id} style={styles.entry}>
               <View style={styles.entryHead}>
                 <Text
                   style={[styles.kind, { color: KIND_COLOR[item.kind] }]}>
@@ -115,8 +112,8 @@ export default function Journal() {
               </View>
               <Text style={styles.entryText}>{item.text}</Text>
             </View>
-          )}
-        />
+          ))}
+        </View>
       )}
 
       <View style={{ paddingTop: spacing.md }}>
@@ -165,6 +162,14 @@ function BookendRow({
         styles.bookendCard,
         { opacity: pressed ? 0.85 : 1 },
       ]}>
+      {slot === 'evening' && (
+        <Image
+          source={eveningReflection}
+          style={styles.bookendArt}
+          resizeMode="cover"
+          accessibilityLabel="Watercolor illustration of the window at night, moon above, a closed journal on the sill"
+        />
+      )}
       <Label color={colors.amberBright}>{title}</Label>
       <Text style={styles.bookendPrompt}>{promptForSlot(slot, new Date())}</Text>
       <Text style={styles.bookendHint}>{activeHint}</Text>
@@ -177,6 +182,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.pine,
     borderRadius: 14,
     padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  bookendArt: {
+    width: '100%',
+    aspectRatio: 3 / 2,
+    borderRadius: radii.md,
     marginBottom: spacing.md,
   },
   bookendPrompt: {
@@ -212,14 +223,14 @@ const styles = StyleSheet.create({
     color: colors.inkFaint,
   },
   empty: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
   },
   emptyArt: {
     width: '100%',
-    height: 180,
+    aspectRatio: 4 / 3,
     borderRadius: radii.md,
     marginBottom: spacing.lg,
   },

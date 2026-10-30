@@ -727,7 +727,7 @@ function capitalize(s: string): string {
 const styles = StyleSheet.create({
   welcomeArt: {
     width: '100%',
-    height: 210,
+    aspectRatio: 4 / 3,
     borderRadius: radii.md,
     marginBottom: spacing.lg,
   },

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import CravingBarChart, { type DayCravings } from '@/components/CravingBarChart';
 import CravingForecast from '@/components/CravingForecast';
@@ -31,6 +31,8 @@ import {
 import { identityVotes } from '@/lib/votes';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, spacing } from '@/theme';
+
+const savingsJarArt = require('../../assets/illustrations/04-savings-jar.jpg');
 
 export default function Stats() {
   const plan = useStore((s) => s.plan);
@@ -259,6 +261,12 @@ export default function Stats() {
       {savingsGoal && (
         <>
           <Label style={styles.sectionLabel}>Your savings goal</Label>
+          <Image
+            source={savingsJarArt}
+            style={styles.jarArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
+          />
           <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
         </>
       )}
@@ -268,6 +276,12 @@ export default function Stats() {
 }
 
 const styles = StyleSheet.create({
+  jarArt: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 14,
+    marginBottom: spacing.md,
+  },
   sectionLabel: { marginTop: spacing.xl, marginBottom: spacing.sm },
   chartCard: {
     backgroundColor: colors.surface,

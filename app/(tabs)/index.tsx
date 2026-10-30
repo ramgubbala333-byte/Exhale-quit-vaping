@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import CountUpMoney from '@/components/CountUpMoney';
 import MaxWidth from '@/components/MaxWidth';
@@ -48,6 +48,8 @@ import {
 } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
+
+const homeWindowsill = require('../../assets/illustrations/02-home-windowsill.jpg');
 
 export default function Home() {
   const plan = useStore((s) => s.plan);
@@ -243,6 +245,13 @@ export default function Home() {
           <WeekDots plan={plan} cravings={cravings} journal={journal} now={now} />
 
           <RecoveryRings plan={plan} now={now} />
+
+          <Image
+            source={homeWindowsill}
+            style={styles.homeArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
+          />
         </>
       )}
 
@@ -402,6 +411,12 @@ function TaperPanel({
 }
 
 const styles = StyleSheet.create({
+  homeArt: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: radii.md,
+    marginTop: spacing.xl,
+  },
   wordmarkRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

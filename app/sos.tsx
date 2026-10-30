@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -36,6 +37,10 @@ import { haptics } from '@/lib/haptics';
 import { planForTrigger, TRIGGERS } from '@/lib/plans';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
+
+const sosShore = require('../assets/illustrations/01-sos-shore.jpg');
+const rescueLamp = require('../assets/illustrations/03-rescue-lamp.jpg');
+const supportLetter = require('../assets/illustrations/05-support-letter.jpg');
 
 /**
  * PRODUCT POLICY: the SOS toolkit and the core quit counter are free
@@ -298,6 +303,12 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'menu' && (
         <View>
+          <Image
+            source={sosShore}
+            style={styles.headerArt}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of a calm shoreline at dawn, one wave receding"
+          />
           <Label color={colors.amber}>Craving toolkit</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             Pick your tool
@@ -438,6 +449,12 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'why' && (
         <View>
+          <Image
+            source={supportLetter}
+            style={[styles.headerArt, { aspectRatio: 4 / 3 }]}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of a letter, a phone, and a cup of tea under lamplight"
+          />
           <Label color={colors.amber}>Why cards</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
             Your reasons, up close
@@ -501,6 +518,12 @@ export default function Sos() {
 
       {!tagging && flow === 'slipped' && rescueStep === 0 && (
         <View>
+          <Image
+            source={rescueLamp}
+            style={[styles.headerArt, { aspectRatio: 4 / 3 }]}
+            resizeMode="cover"
+            accessibilityLabel="Watercolor illustration of the desk after rain, the lamp lit again, a fresh blank page"
+          />
           <Label color={colors.clay}>Rescue, step 1 of 3</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             A slip is data, not a verdict
@@ -621,6 +644,12 @@ export default function Sos() {
 }
 
 const styles = StyleSheet.create({
+  headerArt: {
+    width: '100%',
+    aspectRatio: 3 / 2,
+    borderRadius: radii.md,
+    marginBottom: spacing.lg,
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   toolRow: {
     backgroundColor: colors.surface,

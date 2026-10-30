@@ -143,7 +143,7 @@ function RevealLine({
 const styles = StyleSheet.create({
   headerArt: {
     width: '100%',
-    height: 200,
+    aspectRatio: 4 / 3,
     borderRadius: radii.md,
     marginBottom: spacing.lg,
   },

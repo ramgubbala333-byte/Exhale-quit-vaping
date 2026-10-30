@@ -189,8 +189,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bookendArtFrame: {
-    width: '100%',
-    aspectRatio: 3 / 2,
+    width: '62%',
+    alignSelf: 'center',
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.md,
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   },
   emptyArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.lg,

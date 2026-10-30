@@ -303,7 +303,7 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'menu' && (
         <View>
-          <View style={styles.headerArtFrame}>
+          <View style={styles.headerArtFrameTall}>
             <Image
               source={sosShore}
               style={styles.artFill}
@@ -652,7 +652,14 @@ export default function Sos() {
 const styles = StyleSheet.create({
   headerArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 2 / 3,
+    borderRadius: radii.md,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+  },
+  headerArtFrameTall: {
+    width: '100%',
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.lg,

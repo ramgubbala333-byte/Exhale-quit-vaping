@@ -145,7 +145,7 @@ function RevealLine({
 const styles = StyleSheet.create({
   headerArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 2 / 3,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.lg,

@@ -137,8 +137,9 @@ export default function MilestoneCelebration({
 
 const styles = StyleSheet.create({
   headerArtFrame: {
-    width: '100%',
-    aspectRatio: 3 / 2,
+    width: '48%',
+    alignSelf: 'center',
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.lg,

@@ -415,7 +415,7 @@ function TaperPanel({
 const styles = StyleSheet.create({
   homeArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginTop: spacing.xl,

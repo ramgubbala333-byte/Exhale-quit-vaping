@@ -280,7 +280,7 @@ export default function Stats() {
 const styles = StyleSheet.create({
   jarArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1 / 2,
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: spacing.md,

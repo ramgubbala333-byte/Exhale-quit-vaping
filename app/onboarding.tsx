@@ -729,7 +729,7 @@ function capitalize(s: string): string {
 const styles = StyleSheet.create({
   welcomeArtFrame: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 1 / 2,
     borderRadius: radii.md,
     overflow: 'hidden',
     marginBottom: spacing.lg,

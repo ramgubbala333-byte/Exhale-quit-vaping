@@ -5,7 +5,10 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import CravingBarChart, { type DayCravings } from '@/components/CravingBarChart';
 import CravingForecast from '@/components/CravingForecast';
 import MaxWidth from '@/components/MaxWidth';
-import { SavingsGoalJar } from '@/components/SavingsGoalJar';
+import {
+  LifetimeCoinJar,
+  SavingsGoalJar,
+} from '@/components/SavingsGoalJar';
 import TriggerHeatmap from '@/components/TriggerHeatmap';
 import {
   Body,
@@ -258,19 +261,21 @@ export default function Stats() {
         />
       </View>
 
-      {savingsGoal && (
-        <>
-          <Label style={styles.sectionLabel}>Your savings goal</Label>
-          <View style={styles.jarArtFrame}>
-            <Image
-              source={savingsJarArt}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
-            />
-          </View>
-          <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
-        </>
+      <Label style={styles.sectionLabel}>
+        {savingsGoal ? 'Your savings goal' : 'Coin collector'}
+      </Label>
+      <View style={styles.jarArtFrame}>
+        <Image
+          source={savingsJarArt}
+          style={styles.artFill}
+          resizeMode="cover"
+          accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
+        />
+      </View>
+      {savingsGoal ? (
+        <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
+      ) : (
+        <LifetimeCoinJar moneyKept={lifetimeMoney} />
       )}
     </MaxWidth>
     </Screen>

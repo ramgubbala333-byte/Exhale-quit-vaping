@@ -1,8 +1,8 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import CountUpMoney from '@/components/CountUpMoney';
+import { CoinCollector } from '@/components/CoinCollector';
 import MaxWidth from '@/components/MaxWidth';
 import MilestoneCelebration from '@/components/MilestoneCelebration';
 import QuitTimer from '@/components/QuitTimer';
@@ -77,20 +77,12 @@ export default function Home() {
   };
   const [now, setNow] = useState(() => new Date());
   const [celebration, setCelebration] = useState<MilestoneState | null>(null);
-  const [focusTick, setFocusTick] = useState(0);
 
   // Refresh the derived numbers once a minute (the timer ticks itself).
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
-
-  // Replay the kept-money count-up whenever Home regains focus.
-  useFocusEffect(
-    useCallback(() => {
-      setFocusTick((t) => t + 1);
-    }, []),
-  );
 
   // Keep the notification schedule fresh (danger window, sweep amount,
   // today's mission) whenever Home mounts. Best-effort and silent.
@@ -149,7 +141,6 @@ export default function Home() {
   if (!plan) return null;
 
   const resisted = cravings.filter((c) => c.outcome === 'resisted').length;
-  const saved = moneySaved(plan, now);
   const lifetimeSaved = lifetimeMoneySaved(plan, banked, now);
   const next = nextMilestone(plan, now);
   const progress = progressToNext(plan, now);
@@ -206,10 +197,7 @@ export default function Home() {
             {dailyLine(now)}
           </Text>
 
-          <View style={styles.savedBlock}>
-            <Label color={colors.amber}>Money kept so far</Label>
-            <CountUpMoney value={saved} focusTick={focusTick} />
-          </View>
+          <CoinCollector moneyKept={lifetimeSaved} />
 
           <View style={styles.ledger}>
             <StatRow
@@ -256,6 +244,8 @@ export default function Home() {
           </View>
         </>
       )}
+
+      {taperActive && <CoinCollector moneyKept={lifetimeSaved} />}
 
       {savingsGoal && (
         <Pressable onPress={() => router.push('/(tabs)/stats')}>
@@ -464,12 +454,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.pine,
     marginTop: spacing.lg,
-  },
-  savedBlock: {
-    marginTop: spacing.xl,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
-    paddingTop: spacing.lg,
   },
   ledger: {
     marginTop: spacing.lg,

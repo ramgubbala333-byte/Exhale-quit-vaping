@@ -95,12 +95,21 @@ export function CoinJar({
   moneyKept,
   height = 150,
   percentLabel,
+  animateDrops = true,
 }: {
   moneyKept: number;
   /** Rendered height in px; width follows the jar's own aspect. */
   height?: number;
   /** Optional big percent shown over the jar (full-size Stats jar). */
   percentLabel?: string;
+  /**
+   * When false, this jar is a passive picture of the pile: it always
+   * shows every coin and never performs drops or touches the shared
+   * jarSeenMoney marker. Used where a second jar shares a screen with
+   * the jar that owns the payoff (e.g. the Home savings strip beside
+   * the coin collector), so only one jar ever consumes the growth.
+   */
+  animateDrops?: boolean;
 }) {
   const jarSeenMoney = useStore((s) => s.jarSeenMoney);
   const setJarSeenMoney = useStore((s) => s.setJarSeenMoney);
@@ -108,7 +117,9 @@ export function CoinJar({
 
   const totalCoins = coinsForMoney(moneyKept);
   const [settled, setSettled] = useState(() =>
-    Math.min(totalCoins, coinsForMoney(jarSeenMoney)),
+    animateDrops
+      ? Math.min(totalCoins, coinsForMoney(jarSeenMoney))
+      : totalCoins,
   );
   const [falling, setFalling] = useState<FallingCoin[]>([]);
   const [layout, setLayout] = useState<{ w: number; h: number } | null>(null);
@@ -119,6 +130,8 @@ export function CoinJar({
   seenRef.current = jarSeenMoney;
   const reduceRef = useRef(reduceMotion);
   reduceRef.current = reduceMotion;
+  const dropsRef = useRef(animateDrops);
+  dropsRef.current = animateDrops;
   const focusedRef = useRef(false);
   const animatingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -136,6 +149,12 @@ export function CoinJar({
    * gets the payoff.
    */
   const check = useCallback(() => {
+    if (!dropsRef.current) {
+      // Passive jar: mirror the full pile, leave the growth marker
+      // (and the drop payoff) to the jar that owns it.
+      setSettled(coinsForMoney(moneyRef.current));
+      return;
+    }
     if (animatingRef.current || !focusedRef.current) return;
     const money = moneyRef.current;
     const total = coinsForMoney(money);

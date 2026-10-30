@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
 import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
-import { dailyCost, formatCount, formatMoney } from '@/lib/calc';
+import { dailyCost, formatCount, formatMoney, projections } from '@/lib/calc';
 import { nextMilestone } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
@@ -31,8 +31,20 @@ export default function Reveal() {
   if (!plan) return null;
 
   const perDay = dailyCost(plan);
+  const proj = projections(plan);
   const first = nextMilestone(plan, new Date());
   const isTaper = plan.approach === 'taper' && !plan.taperCompleted;
+  const fromSettings = params.from === 'settings';
+  // The finish is a declaration, not a button label: the sentence the
+  // user said out loud on day one. Taper users start their cut-down;
+  // everyone else signs the quit with their own name.
+  const finishTitle = fromSettings
+    ? 'Back to my app'
+    : isTaper
+      ? 'Start my cut-down'
+      : plan.userName
+        ? `${plan.userName} doesn't vape.`
+        : "I don't vape.";
 
   return (
     <Screen>
@@ -75,13 +87,23 @@ export default function Reveal() {
         </View>
 
         <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
-          What your numbers become
+          What quitting pays back
         </Label>
-        <View style={styles.ledger}>
+        <Text maxFontSizeMultiplier={1.15} style={styles.bigNumber}>
+          {formatMoney(proj.moneyPerMonth)}
+        </Text>
+        <Text style={styles.bigCaption}>in a month 🤯 … and</Text>
+        <Text maxFontSizeMultiplier={1.15} style={styles.bigNumber}>
+          {formatMoney(proj.moneyPerYear)}
+        </Text>
+        <Text style={styles.bigCaption}>in a year 🤑</Text>
+
+        <View style={[styles.ledger, { marginTop: spacing.xl }]}>
           <RevealLine label="Kept in 1 week" value={formatMoney(perDay * 7)} />
-          <RevealLine label="Kept in 1 month" value={formatMoney(perDay * (365 / 12))} />
-          <RevealLine label="Kept in 6 months" value={formatMoney(perDay * (365 / 2))} />
-          <RevealLine label="Kept in 1 year" value={formatMoney(perDay * 365)} />
+          <RevealLine
+            label="Kept in 6 months"
+            value={formatMoney(perDay * (365 / 2))}
+          />
           <RevealLine
             label="Puffs avoided in 1 year"
             value={formatCount(plan.puffsPerDay * 365)}
@@ -106,17 +128,10 @@ export default function Reveal() {
 
         <View style={{ marginTop: spacing.xl }}>
           <PrimaryButton
-            title={
-              params.from === 'settings'
-                ? 'Back to my app'
-                : isTaper
-                  ? 'Start my cut-down'
-                  : 'Start day one'
-            }
+            title={finishTitle}
+            haptic={fromSettings ? 'tap' : 'success'}
             onPress={() =>
-              params.from === 'settings'
-                ? router.back()
-                : router.replace('/(tabs)')
+              fromSettings ? router.back() : router.replace('/(tabs)')
             }
           />
         </View>
@@ -196,6 +211,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 19,
     color: colors.pineDeep,
+  },
+  bigNumber: {
+    fontFamily: fonts.displayBold,
+    fontSize: 52,
+    lineHeight: 58,
+    color: colors.pine,
+    marginTop: spacing.sm,
+  },
+  bigCaption: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 16,
+    color: colors.inkMuted,
+    marginTop: 2,
   },
   ledger: {
     borderTopWidth: StyleSheet.hairlineWidth,

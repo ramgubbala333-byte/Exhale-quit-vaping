@@ -308,6 +308,9 @@ order they will be picked up:
 
 1. Home-screen widget: quit timer, money kept, one-tap SOS (owner's
    top native-build priority, set Oct 29, 2026).
+2. Optional Google sign-in + cloud backup (Supabase) — after the
+   widget; guest mode stays the default and the app keeps collecting
+   nothing for guests (owner request Oct 29, 2026).
 
 ## Verification (latest pass)
 

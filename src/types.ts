@@ -15,6 +15,12 @@ export interface TaperConfig {
 }
 
 export interface Plan {
+  /**
+   * First name the user gave in onboarding step 1 (optional; plans
+   * created before this field existed simply lack it). Used by the
+   * reveal declaration and the Note to Self page.
+   */
+  userName?: string;
   deviceType: DeviceType;
   /** Self-reported average puffs per day before quitting. */
   puffsPerDay: number;

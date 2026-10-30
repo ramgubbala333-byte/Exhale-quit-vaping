@@ -3,7 +3,16 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import FlavourPicker from '@/components/FlavourPicker';
 import IfThenPlanForm from '@/components/IfThenPlanForm';
@@ -18,49 +27,39 @@ import {
   PrimaryButton,
   Screen,
 } from '@/components/ui';
-import {
-  formatCount,
-  formatDate,
-  formatMoney,
-  projections,
-  taperBudgetForWeek,
-  taperZeroDate,
-} from '@/lib/calc';
+import { formatDate, taperBudgetForWeek, taperZeroDate } from '@/lib/calc';
+import { REASON_OPTIONS } from '@/lib/reasons';
 import { useStore } from '@/store/useStore';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 const welcomeMist = require('../assets/illustrations/01-welcome-mist.jpg');
 import type { DeviceType, Plan, QuitApproach } from '@/types';
 
-const DEVICE_OPTIONS: { value: DeviceType; label: string; unit: string }[] = [
-  { value: 'disposable', label: 'Disposables', unit: 'device' },
-  { value: 'pod', label: 'Pod system', unit: 'pod' },
-  { value: 'refillable', label: 'Refillable tank', unit: 'bottle of liquid' },
+/**
+ * Onboarding, rebuilt as a short sentence-style flow (owner-directed,
+ * modelled on the intro flow he praised): three steps, each a sentence
+ * the user completes, then the Plan Reveal does the celebrating.
+ *   1. Name + quit moment: "Hi, my name is ___ / I quit vaping on ___"
+ *   2. The habit sentence: device, pace, price, plus the details.
+ *   3. The plan: approach, reasons, one if-then plan.
+ * Everything downstream needs is still collected here and lands in the
+ * same Plan shape as before; the only new field is the optional name.
+ */
+
+const DEVICE_OPTIONS: {
+  value: DeviceType;
+  chip: string;
+  noun: string;
+  unit: string;
+}[] = [
+  { value: 'disposable', chip: 'Disposable', noun: 'disposable', unit: 'device' },
+  { value: 'pod', chip: 'Pod system', noun: 'pod', unit: 'pod' },
+  { value: 'refillable', chip: 'Refill bottle', noun: 'bottle of liquid', unit: 'bottle' },
 ];
 
 const CUT_OPTIONS = [10, 20, 25, 33, 50];
 
-const REASON_OPTIONS = [
-  'My health',
-  'The money',
-  'My family',
-  'Breathing easier',
-  'Better focus',
-  'For my kids',
-  'I am tired of depending on it',
-  'My fitness',
-  'A fresh start',
-];
-
-const STEPS = [
-  'Welcome',
-  'Your habit',
-  'Approach',
-  'Quit moment',
-  'Your reasons',
-  'Craving plans',
-  'Your plan',
-];
+const STEPS = ['Welcome', 'Your habit', 'Your plan'];
 
 type PickerState = { which: 'quit' | 'target'; mode: 'date' | 'time' } | null;
 
@@ -69,36 +68,42 @@ export default function Onboarding() {
   const addCravingPlan = useStore((s) => s.addCravingPlan);
 
   const [step, setStep] = useState(0);
+  const [name, setName] = useState('');
+  const [quitDate, setQuitDate] = useState(() => new Date());
   const [deviceType, setDeviceType] = useState<DeviceType>('disposable');
+  const [daysText, setDaysText] = useState('');
   const [puffsText, setPuffsText] = useState('');
-  const [unitsText, setUnitsText] = useState('');
   const [costText, setCostText] = useState('');
   const [nicotineText, setNicotineText] = useState('');
   const [deviceSizeText, setDeviceSizeText] = useState('');
   const [puffsPerDeviceText, setPuffsPerDeviceText] = useState('');
   const [flavours, setFlavours] = useState<string[]>([]);
   const [customFlavour, setCustomFlavour] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
+  const [showFlavours, setShowFlavours] = useState(false);
   const [approach, setApproach] = useState<QuitApproach>('now');
   const [cutPercent, setCutPercent] = useState(25);
   const [targetDate, setTargetDate] = useState<Date | null>(null);
-  const [quitDate, setQuitDate] = useState(() => new Date());
   const [picker, setPicker] = useState<PickerState>(null);
   const [reasons, setReasons] = useState<string[]>([]);
   const [customReason, setCustomReason] = useState('');
-  const [planDrafts, setPlanDrafts] = useState<
-    { trigger: string; action: string }[]
-  >([]);
+  const [planDraft, setPlanDraft] = useState<{
+    trigger: string;
+    action: string;
+  } | null>(null);
 
-  const unitLabel =
-    DEVICE_OPTIONS.find((d) => d.value === deviceType)?.unit ?? 'pod';
+  const device =
+    DEVICE_OPTIONS.find((d) => d.value === deviceType) ?? DEVICE_OPTIONS[0];
 
   const habit = useMemo(() => {
     const puffs = parseInt(puffsText, 10);
-    const units = parseFloat(unitsText);
+    const days = parseFloat(daysText);
     const cost = parseFloat(costText);
-    if (!(puffs > 0) || !(units > 0) || !(cost > 0)) return null;
-    return { puffs, units, cost };
-  }, [puffsText, unitsText, costText]);
+    if (!(puffs > 0) || !(days > 0) || !(cost > 0)) return null;
+    // The sentence collects a pace ("one device every 5 days"); the
+    // plan stores the equivalent units-per-week the math runs on.
+    return { puffs, unitsPerWeek: 7 / days, cost };
+  }, [puffsText, daysText, costText]);
 
   /** Scratch plan used only to run the taper projection math. */
   const taperPreview = useMemo<Plan | null>(() => {
@@ -108,7 +113,7 @@ export default function Onboarding() {
     return {
       deviceType,
       puffsPerDay: habit.puffs,
-      unitsPerWeek: habit.units,
+      unitsPerWeek: habit.unitsPerWeek,
       costPerUnit: habit.cost,
       quitDate: start.toISOString(),
       reasons: [],
@@ -135,10 +140,12 @@ export default function Onboarding() {
     const nicotine = parseFloat(nicotineText);
     const sizeMl = parseFloat(deviceSizeText);
     const perDevice = parseInt(puffsPerDeviceText, 10);
+    const trimmedName = name.trim();
     const base: Plan = {
+      userName: trimmedName ? trimmedName : undefined,
       deviceType,
       puffsPerDay: habit.puffs,
-      unitsPerWeek: habit.units,
+      unitsPerWeek: habit.unitsPerWeek,
       costPerUnit: habit.cost,
       quitDate: quitDate.toISOString(),
       reasons,
@@ -163,6 +170,7 @@ export default function Onboarding() {
     return base;
   }, [
     habit,
+    name,
     deviceType,
     quitDate,
     reasons,
@@ -174,8 +182,6 @@ export default function Onboarding() {
     cutPercent,
     effectiveTarget,
   ]);
-
-  const proj = useMemo(() => (draft ? projections(draft) : null), [draft]);
 
   const toggleReason = (r: string) =>
     setReasons((prev) =>
@@ -202,503 +208,467 @@ export default function Onboarding() {
   };
 
   const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS !== 'ios') setPicker(null);
-    if (event.type === 'set' && selected && picker) {
-      if (picker.which === 'quit') setQuitDate(selected);
-      else setTargetDate(selected);
+    if (!picker) return;
+    const which = picker.which;
+    const mode = picker.mode;
+    if (Platform.OS === 'ios') {
+      if (event.type === 'set' && selected) {
+        if (which === 'quit') setQuitDate(selected);
+        else setTargetDate(selected);
+      }
+      return;
+    }
+    // Android: the dialog closes after each pick, so chain date -> time
+    // for the quit moment to keep it a single gesture.
+    setPicker(null);
+    if (event.type !== 'set' || !selected) return;
+    if (which === 'quit') {
+      setQuitDate(selected);
+      if (mode === 'date') {
+        setTimeout(() => setPicker({ which: 'quit', mode: 'time' }), 50);
+      }
+    } else {
+      setTargetDate(selected);
     }
   };
 
   const canContinue =
-    step === 1 ? habit !== null : step === 4 ? reasons.length > 0 : true;
+    step === 1 ? habit !== null : step === 2 ? reasons.length > 0 : true;
 
   const finish = () => {
     if (!draft) return;
     if (draft.reasons.length === 0) {
-      Alert.alert('Add a reason', 'Pick at least one reason to come back to on hard days.');
+      Alert.alert(
+        'Add a reason',
+        'Pick at least one reason to come back to on hard days.',
+      );
       return;
     }
     setPlan(draft);
-    planDrafts.forEach((p) => addCravingPlan(p.trigger, p.action));
+    if (planDraft) addCravingPlan(planDraft.trigger, planDraft.action);
     router.replace('/reveal');
   };
 
   return (
     <View style={{ flex: 1 }}>
-    <MistVeil progress={step / (STEPS.length - 1)} />
-    <Screen>
-      <View style={styles.progressRow}>
-        {STEPS.map((s, i) => (
-          <View
-            key={s}
-            style={[
-              styles.progressSegment,
-              { backgroundColor: i <= step ? colors.pine : colors.line },
-            ]}
-          />
-        ))}
-      </View>
-      <Label style={{ marginBottom: spacing.xs }}>{STEPS[step]}</Label>
-
-      {step === 0 && (
-        <View>
-          <View style={styles.welcomeArtFrame}>
-            <Image
-              source={welcomeMist}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
+      <MistVeil progress={step / (STEPS.length - 1)} />
+      <Screen>
+        <View style={styles.progressRow}>
+          {STEPS.map((s, i) => (
+            <View
+              key={s}
+              style={[
+                styles.progressSegment,
+                { backgroundColor: i <= step ? colors.pine : colors.line },
+              ]}
             />
-          </View>
-          <Display size={42} style={{ marginBottom: spacing.md }}>
-            Breathe out.{'\n'}For good.
-          </Display>
-          <Body size={16} color={colors.inkMuted}>
-            Mistless is a calm companion for quitting vaping. It tracks your
-            streak, the money you keep, and the health milestones ahead, and
-            it talks you through cravings when they hit. Everything stays on
-            this phone. No account, no feed, no noise.
-          </Body>
-          <Body size={16} color={colors.inkMuted} style={{ marginTop: spacing.md }}>
-            Setting up takes a minute: your old habit, how you want to quit,
-            and your reasons.
-          </Body>
+          ))}
         </View>
-      )}
+        <Label style={{ marginBottom: spacing.xs }}>{STEPS[step]}</Label>
 
-      {step === 1 && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            Your habit, honestly
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Rough numbers are fine. They power your savings and milestone
-            math, and you can edit them later.
-          </Body>
-
-          <Label style={{ marginBottom: spacing.sm }}>What did you use?</Label>
-          <View style={styles.chipRow}>
-            {DEVICE_OPTIONS.map((d) => (
-              <Chip
-                key={d.value}
-                label={d.label}
-                selected={deviceType === d.value}
-                onPress={() => setDeviceType(d.value)}
+        {step === 0 && (
+          <View>
+            <View style={styles.welcomeArtFrame}>
+              <Image
+                source={welcomeMist}
+                style={styles.artFill}
+                resizeMode="cover"
+                accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
               />
-            ))}
-          </View>
-
-          <Field
-            label="Puffs per day (roughly)"
-            value={puffsText}
-            onChangeText={setPuffsText}
-            keyboardType="number-pad"
-            placeholder="e.g. 300"
-          />
-          <Field
-            label={`${capitalize(unitLabel)}s per week`}
-            value={unitsText}
-            onChangeText={setUnitsText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 4"
-          />
-          <Field
-            label={`Cost per ${unitLabel} (USD)`}
-            value={costText}
-            onChangeText={setCostText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 15"
-          />
-          {puffsText !== '' && habit === null ? (
-            <Text style={styles.errorText}>
-              Fill in all three numbers with values above zero.
-            </Text>
-          ) : null}
-
-          <Label style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
-            The details, if you know them (optional)
-          </Label>
-          <Field
-            label="Nicotine strength (mg/mL)"
-            value={nicotineText}
-            onChangeText={setNicotineText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 50 (most disposables), 20, 3"
-          />
-          <Field
-            label={`Liquid per ${unitLabel} (mL)`}
-            value={deviceSizeText}
-            onChangeText={setDeviceSizeText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 13"
-          />
-          <Field
-            label={`Puffs per ${unitLabel} (if it is printed on the box)`}
-            value={puffsPerDeviceText}
-            onChangeText={setPuffsPerDeviceText}
-            keyboardType="number-pad"
-            placeholder="e.g. 5000"
-          />
-
-          <Label style={{ marginBottom: spacing.sm }}>
-            Your usual flavours (pick any)
-          </Label>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
-            The ones that will call your name. Naming them now makes them
-            easier to spot, and refuse, later.
-          </Body>
-          <FlavourPicker
-            selected={flavours}
-            onToggle={toggleFlavour}
-            customText={customFlavour}
-            onCustomTextChange={setCustomFlavour}
-            onAddCustom={addCustomFlavour}
-          />
-        </View>
-      )}
-
-      {step === 2 && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            How do you want to quit?
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Both roads work. Pick the one you will actually stay on.
-          </Body>
-
-          <View style={styles.chipRow}>
-            <Chip
-              label="Quit now"
-              selected={approach === 'now'}
-              onPress={() => setApproach('now')}
-            />
-            <Chip
-              label="Cut down first"
-              selected={approach === 'taper'}
-              onPress={() => setApproach('taper')}
-            />
-          </View>
-
-          {approach === 'now' && (
-            <Body color={colors.inkMuted}>
-              Cold turkey: your quit clock starts at the moment you choose
-              next, and every tracker runs from there.
+            </View>
+            <Display size={34} style={{ marginBottom: spacing.md }}>
+              Ready to break up with your vape? 👋
+            </Display>
+            <Body size={16} color={colors.inkMuted}>
+              Good. Mistless is the calm companion for it: your streak, the
+              money you keep, your health coming back, and a plan for the
+              craving moments. Everything stays on this phone. No account,
+              no feed, no noise.
             </Body>
-          )}
+            <Body size={16} color={colors.inkMuted} style={{ marginTop: spacing.md }}>
+              Setting up takes a minute. Two sentences and we begin.
+            </Body>
 
-          {approach === 'taper' && (
-            <View>
-              <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
-                A taper gives you a daily puff budget that shrinks every
-                week until it reaches zero, then the full quit begins. You
-                log puffs with one tap on the home screen.
-              </Body>
-              <Label style={{ marginBottom: spacing.sm }}>
-                Shrink the budget each week by
-              </Label>
-              <View style={styles.chipRow}>
-                {CUT_OPTIONS.map((c) => (
-                  <Chip
-                    key={c}
-                    label={`${c}%`}
-                    selected={cutPercent === c}
-                    onPress={() => {
-                      setCutPercent(c);
-                      setTargetDate(null);
-                    }}
-                  />
-                ))}
-              </View>
-              {taperPreview && (
-                <View style={styles.summaryLedger}>
-                  <SummaryLine
-                    label="This week's budget"
-                    value={`${taperBudgetForWeek(taperPreview, 0)} / day`}
-                  />
-                  <SummaryLine
-                    label="Next week"
-                    value={`${taperBudgetForWeek(taperPreview, 1)} / day`}
-                  />
-                  <SummaryLine
-                    label="Week after"
-                    value={`${taperBudgetForWeek(taperPreview, 2)} / day`}
-                  />
-                  <SummaryLine
-                    label="Budget reaches zero around"
-                    value={zeroDate ? formatDate(zeroDate.toISOString()) : '—'}
-                    last
-                  />
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      )}
-
-      {step === 3 && approach === 'now' && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            When did you quit?
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Set the moment of your last puff. If you are quitting right now,
-            leave it as is.
-          </Body>
-
-          <View style={styles.dateCard}>
-            <Text style={styles.dateValue}>
-              {quitDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
-            <Text style={styles.dateValue}>
-              {quitDate.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
-            </Text>
-          </View>
-
-          <View style={styles.pickerButtons}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <PrimaryButton
-                title="Change date"
-                onPress={() => setPicker({ which: 'quit', mode: 'date' })}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <PrimaryButton
-                title="Change time"
-                tone="amber"
-                onPress={() => setPicker({ which: 'quit', mode: 'time' })}
-              />
-            </View>
-          </View>
-          <GhostButton
-            title="I am quitting right now"
-            onPress={() => setQuitDate(new Date())}
-          />
-        </View>
-      )}
-
-      {step === 3 && approach === 'taper' && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            Your quit day
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            This is the day the budget ends and the full quit begins. It is
-            set to when your budget reaches zero; move it if you want a
-            different day. If the budget hits zero sooner, Mistless flips you
-            to the full quit automatically.
-          </Body>
-
-          <View style={styles.dateCard}>
-            <Text style={styles.dateValue}>
-              {effectiveTarget.toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
-          </View>
-
-          <PrimaryButton
-            title="Change quit day"
-            onPress={() => setPicker({ which: 'target', mode: 'date' })}
-          />
-          {targetDate && (
-            <GhostButton
-              title="Use the projected zero day"
-              onPress={() => setTargetDate(null)}
+            <Text style={styles.sentenceLabel}>Hi, my name is</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Your name (optional)"
+              placeholderTextColor={colors.inkFaint}
+              autoCapitalize="words"
+              returnKeyType="done"
+              style={styles.pillInput}
             />
-          )}
-        </View>
-      )}
 
-      {step === 4 && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            Why are you quitting?
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Pick every reason that is true. On the hardest days, the app will
-            hand these back to you.
-          </Body>
-          <View style={styles.chipRow}>
-            {REASON_OPTIONS.map((r) => (
-              <Chip
-                key={r}
-                label={r}
-                selected={reasons.includes(r)}
-                onPress={() => toggleReason(r)}
+            <Text style={styles.sentenceLabel}>I quit vaping on</Text>
+            <Pressable
+              onPress={() => setPicker({ which: 'quit', mode: 'date' })}
+              style={({ pressed }) => [
+                styles.pill,
+                { opacity: pressed ? 0.75 : 1 },
+              ]}>
+              <Text style={styles.pillText}>{momentLabel(quitDate)}</Text>
+            </Pressable>
+            <Body size={13} color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+              Tap to set the moment of your last puff. Quitting right now?
+              Leave it exactly as it is.
+            </Body>
+          </View>
+        )}
+
+        {step === 1 && (
+          <View>
+            <Display size={30} style={{ marginBottom: spacing.sm }}>
+              The old habit, honestly
+            </Display>
+            <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+              Rough numbers are fine. They power your savings and milestone
+              math, and you can edit them later.
+            </Body>
+
+            <Text style={styles.sentenceLabel}>
+              I used to go through an entire
+            </Text>
+            <View style={styles.chipRow}>
+              {DEVICE_OPTIONS.map((d) => (
+                <Chip
+                  key={d.value}
+                  label={d.chip}
+                  selected={deviceType === d.value}
+                  onPress={() => setDeviceType(d.value)}
+                />
+              ))}
+            </View>
+            <View style={styles.sentenceRow}>
+              <Text style={styles.sentenceLabelInline}>every</Text>
+              <TextInput
+                value={daysText}
+                onChangeText={setDaysText}
+                placeholder="5"
+                placeholderTextColor={colors.inkFaint}
+                keyboardType="decimal-pad"
+                style={styles.daysInput}
               />
-            ))}
-            {reasons
-              .filter((r) => !REASON_OPTIONS.includes(r))
-              .map((r) => (
+              <Text style={styles.sentenceLabelInline}>days</Text>
+            </View>
+
+            <View style={{ marginTop: spacing.lg }}>
+              <Field
+                label={`I was paying, per ${device.noun} (USD)`}
+                value={costText}
+                onChangeText={setCostText}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 30"
+              />
+              <Field
+                label="Puffs per day (roughly)"
+                value={puffsText}
+                onChangeText={setPuffsText}
+                keyboardType="number-pad"
+                placeholder="e.g. 300"
+              />
+              <Field
+                label="Nicotine strength (mg/mL, optional)"
+                value={nicotineText}
+                onChangeText={setNicotineText}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 50 (most disposables), 20, 3"
+              />
+              {(daysText !== '' || costText !== '' || puffsText !== '') &&
+              habit === null ? (
+                <Text style={styles.errorText}>
+                  Fill in the pace, the price, and your puffs per day, all
+                  above zero.
+                </Text>
+              ) : null}
+            </View>
+
+            <GhostButton
+              title={
+                showDetails
+                  ? 'Hide the details'
+                  : 'More details, if you know them (mL, puffs per device)'
+              }
+              onPress={() => setShowDetails((v) => !v)}
+            />
+            {showDetails && (
+              <View>
+                <Field
+                  label={`Liquid per ${device.noun} (mL)`}
+                  value={deviceSizeText}
+                  onChangeText={setDeviceSizeText}
+                  keyboardType="decimal-pad"
+                  placeholder="e.g. 13"
+                />
+                <Field
+                  label={`Puffs per ${device.noun} (if it is printed on the box)`}
+                  value={puffsPerDeviceText}
+                  onChangeText={setPuffsPerDeviceText}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 5000"
+                />
+              </View>
+            )}
+
+            <GhostButton
+              title={
+                showFlavours
+                  ? 'Hide flavours'
+                  : flavours.length > 0
+                    ? `Your usual flavours (${flavours.length} picked) · edit`
+                    : 'Add your usual flavours (optional)'
+              }
+              onPress={() => setShowFlavours((v) => !v)}
+            />
+            {showFlavours && (
+              <View>
+                <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+                  The ones that will call your name. Naming them now makes
+                  them easier to spot, and refuse, later.
+                </Body>
+                <FlavourPicker
+                  selected={flavours}
+                  onToggle={toggleFlavour}
+                  customText={customFlavour}
+                  onCustomTextChange={setCustomFlavour}
+                  onAddCustom={addCustomFlavour}
+                />
+              </View>
+            )}
+          </View>
+        )}
+
+        {step === 2 && (
+          <View>
+            <Display size={30} style={{ marginBottom: spacing.sm }}>
+              Your plan to stay quit
+            </Display>
+            <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+              Three quick things: how you quit, why, and one plan for the
+              hard moment.
+            </Body>
+
+            <Label style={{ marginBottom: spacing.sm }}>
+              Quit now, or cut down first?
+            </Label>
+            <View style={styles.chipRow}>
+              <Chip
+                label="Quit now"
+                selected={approach === 'now'}
+                onPress={() => setApproach('now')}
+              />
+              <Chip
+                label="Cut down first"
+                selected={approach === 'taper'}
+                onPress={() => setApproach('taper')}
+              />
+            </View>
+
+            {approach === 'now' && (
+              <Body color={colors.inkMuted}>
+                Cold turkey: your quit clock starts at the moment you set
+                on the first screen, and every tracker runs from there.
+              </Body>
+            )}
+
+            {approach === 'taper' && (
+              <View>
+                <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+                  A taper gives you a daily puff budget that shrinks every
+                  week until it reaches zero, then the full quit begins.
+                  You log puffs with one tap on the home screen.
+                </Body>
+                <Label style={{ marginBottom: spacing.sm }}>
+                  Shrink the budget each week by
+                </Label>
+                <View style={styles.chipRow}>
+                  {CUT_OPTIONS.map((c) => (
+                    <Chip
+                      key={c}
+                      label={`${c}%`}
+                      selected={cutPercent === c}
+                      onPress={() => {
+                        setCutPercent(c);
+                        setTargetDate(null);
+                      }}
+                    />
+                  ))}
+                </View>
+                {taperPreview && (
+                  <View style={styles.summaryLedger}>
+                    <SummaryLine
+                      label="This week's budget"
+                      value={`${taperBudgetForWeek(taperPreview, 0)} / day`}
+                    />
+                    <SummaryLine
+                      label="Next week"
+                      value={`${taperBudgetForWeek(taperPreview, 1)} / day`}
+                    />
+                    <SummaryLine
+                      label="Budget reaches zero around"
+                      value={zeroDate ? formatDate(zeroDate.toISOString()) : '—'}
+                      last
+                    />
+                  </View>
+                )}
+                <Label style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
+                  Your quit day
+                </Label>
+                <Pressable
+                  onPress={() => setPicker({ which: 'target', mode: 'date' })}
+                  style={({ pressed }) => [
+                    styles.pill,
+                    { opacity: pressed ? 0.75 : 1 },
+                  ]}>
+                  <Text style={styles.pillText}>
+                    {effectiveTarget.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                </Pressable>
+                <Body size={13} color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+                  Set to when your budget reaches zero. Tap to move it; if
+                  the budget hits zero sooner, Mistless flips you to the
+                  full quit automatically.
+                </Body>
+                {targetDate && (
+                  <GhostButton
+                    title="Use the projected zero day"
+                    onPress={() => setTargetDate(null)}
+                  />
+                )}
+              </View>
+            )}
+
+            <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+              Why I'm done ❤️
+            </Label>
+            <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+              Pick every reason that is true. On the hardest days, the app
+              will hand these back to you.
+            </Body>
+            <View style={styles.chipRow}>
+              {REASON_OPTIONS.map((r) => (
                 <Chip
                   key={r}
                   label={r}
-                  selected
+                  selected={reasons.includes(r)}
                   onPress={() => toggleReason(r)}
                 />
               ))}
-          </View>
-          <Field
-            label="Add your own reason"
-            value={customReason}
-            onChangeText={setCustomReason}
-            placeholder="e.g. To be present for my daughter"
-            returnKeyType="done"
-            onSubmitEditing={addCustomReason}
-          />
-          <GhostButton title="Add this reason" onPress={addCustomReason} />
-        </View>
-      )}
-
-      {step === 5 && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            Make your if-then plans
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Cravings are not random; they have favourite moments. A plan
-            made now, while you are calm, is the version of you that shows
-            up later. Research on if-then planning is unusually clear:
-            one or two specific plans beat five vague intentions. Build
-            up to three.
-          </Body>
-
-          {planDrafts.map((p, i) => (
-            <View key={i} style={styles.planRow}>
-              <Text style={styles.planText}>
-                If {p.trigger.toLowerCase()}, then I will{' '}
-                {p.action.charAt(0).toLowerCase() + p.action.slice(1)}.
-              </Text>
-              <GhostButton
-                title="Remove"
-                onPress={() =>
-                  setPlanDrafts((prev) => prev.filter((_, j) => j !== i))
-                }
-              />
+              {reasons
+                .filter((r) => !REASON_OPTIONS.includes(r))
+                .map((r) => (
+                  <Chip
+                    key={r}
+                    label={r}
+                    selected
+                    onPress={() => toggleReason(r)}
+                  />
+                ))}
             </View>
-          ))}
-
-          {planDrafts.length < 3 ? (
-            <IfThenPlanForm
-              submitLabel={
-                planDrafts.length === 0 ? 'Save my first plan' : 'Add this plan'
-              }
-              onSubmit={(trigger, action) =>
-                setPlanDrafts((prev) => [...prev, { trigger, action }])
-              }
+            <Field
+              label="Add your own reason"
+              value={customReason}
+              onChangeText={setCustomReason}
+              placeholder="e.g. To be present for my daughter"
+              returnKeyType="done"
+              onSubmitEditing={addCustomReason}
             />
-          ) : (
-            <Body color={colors.inkMuted}>
-              Three plans is the full set. They will be waiting in SOS,
-              and you can edit them any time in Settings.
+            <GhostButton title="Add this reason" onPress={addCustomReason} />
+
+            <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+              One plan for the hard moment
+            </Label>
+            <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
+              Cravings have favourite moments. Decide yours now, while you
+              are calm, and future you can borrow the sentence. One is
+              plenty to start; this step is skippable.
             </Body>
-          )}
-
-          {planDrafts.length === 0 && (
-            <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
-              No plans yet is allowed, but even one makes the first hard
-              moment easier. You can also add them later in Settings.
-            </Body>
-          )}
-        </View>
-      )}
-
-      {step === 6 && proj && draft && (
-        <View>
-          <Display size={30} style={{ marginBottom: spacing.sm }}>
-            Here is what quitting returns to you
-          </Display>
-          <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
-            Based on the habit you described, staying quit means roughly:
-          </Body>
-          <View style={styles.summaryLedger}>
-            <SummaryLine
-              label="Money kept, per month"
-              value={formatMoney(proj.moneyPerMonth)}
-            />
-            <SummaryLine
-              label="Money kept, per year"
-              value={formatMoney(proj.moneyPerYear)}
-            />
-            <SummaryLine
-              label={`${capitalize(unitLabel)}s not bought, per year`}
-              value={formatCount(proj.unitsPerYear)}
-            />
-            <SummaryLine
-              label="Puffs skipped, per year"
-              value={formatCount(proj.puffsPerYear)}
-              last={approach === 'now'}
-            />
-            {approach === 'taper' && draft.taper && (
-              <SummaryLine
-                label="Your quit day"
-                value={formatDate(draft.taper.targetQuitDate)}
-                last
+            {planDraft ? (
+              <View style={styles.planRow}>
+                <Text style={styles.planText}>
+                  If {lowerFirst(planDraft.trigger)}, then I will{' '}
+                  {lowerFirst(planDraft.action)}.
+                </Text>
+                <GhostButton
+                  title="Remove it"
+                  onPress={() => setPlanDraft(null)}
+                />
+              </View>
+            ) : (
+              <IfThenPlanForm
+                submitLabel="Save my plan"
+                onSubmit={(trigger, action) => setPlanDraft({ trigger, action })}
               />
             )}
           </View>
-          <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
-            Your reasons: {draft.reasons.join(' · ')}
-          </Body>
-          {draft.flavours && draft.flavours.length > 0 && (
-            <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
-              The flavours you are leaving behind: {draft.flavours.join(' · ')}
-            </Body>
+        )}
+
+        {picker && (
+          <DateTimePicker
+            value={picker.which === 'quit' ? quitDate : effectiveTarget}
+            mode={picker.mode}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={picker.which === 'quit' ? new Date() : undefined}
+            minimumDate={picker.which === 'target' ? new Date() : undefined}
+            onChange={onPickerChange}
+          />
+        )}
+        {Platform.OS === 'ios' && picker && (
+          <GhostButton title="Done" onPress={() => setPicker(null)} />
+        )}
+
+        <View style={styles.footer}>
+          {step < 2 ? (
+            <PrimaryButton
+              title="Continue"
+              disabled={!canContinue}
+              onPress={() => setStep((s) => Math.min(2, s + 1))}
+            />
+          ) : (
+            <PrimaryButton
+              title="See my plan"
+              disabled={!canContinue}
+              haptic="commit"
+              onPress={finish}
+            />
           )}
-          {planDrafts.length > 0 && (
-            <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
-              Your if-then plans: {planDrafts.map((p) => p.trigger).join(' · ')}
-            </Body>
+          {step > 0 && (
+            <GhostButton
+              title="Back"
+              onPress={() => setStep((s) => Math.max(0, s - 1))}
+            />
           )}
         </View>
-      )}
-
-      {picker && (
-        <DateTimePicker
-          value={picker.which === 'quit' ? quitDate : effectiveTarget}
-          mode={picker.mode}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={picker.which === 'quit' ? new Date() : undefined}
-          minimumDate={picker.which === 'target' ? new Date() : undefined}
-          onChange={onPickerChange}
-        />
-      )}
-      {Platform.OS === 'ios' && picker && (
-        <GhostButton title="Done" onPress={() => setPicker(null)} />
-      )}
-
-      <View style={styles.footer}>
-        {step < 6 ? (
-          <PrimaryButton
-            title={step === 0 ? 'Begin' : 'Continue'}
-            disabled={!canContinue}
-            onPress={() => setStep((s) => Math.min(6, s + 1))}
-          />
-        ) : (
-          <PrimaryButton
-            title={approach === 'taper' ? 'Start my cut-down' : 'Start my quit'}
-            onPress={finish}
-          />
-        )}
-        {step > 0 && (
-          <GhostButton
-            title="Back"
-            onPress={() => setStep((s) => Math.max(0, s - 1))}
-          />
-        )}
-      </View>
-    </Screen>
+      </Screen>
     </View>
   );
+}
+
+/** "Today at 8:24 PM" for a moment today, like the reference flow. */
+function momentLabel(d: Date): string {
+  const now = new Date();
+  const time = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  if (d.toDateString() === now.toDateString()) return `Today at ${time}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `Yesterday at ${time}`;
+  }
+  return `${d.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+  })} at ${time}`;
+}
+
+function lowerFirst(s: string): string {
+  return s.charAt(0).toLowerCase() + s.slice(1);
 }
 
 function SummaryLine({
@@ -711,19 +681,11 @@ function SummaryLine({
   last?: boolean;
 }) {
   return (
-    <View
-      style={[
-        styles.summaryLine,
-        last && { borderBottomWidth: 0 },
-      ]}>
+    <View style={[styles.summaryLine, last && { borderBottomWidth: 0 }]}>
       <Text style={styles.summaryLabel}>{label}</Text>
       <Text style={styles.summaryValue}>{value}</Text>
     </View>
   );
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 const styles = StyleSheet.create({
@@ -755,27 +717,67 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.sm },
+  sentenceLabel: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.pineDeep,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  sentenceLabelInline: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.pineDeep,
+  },
+  sentenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  pillInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.pill,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  pill: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.pill,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+  },
+  pillText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 16,
+    color: colors.pine,
+  },
+  daysInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: fonts.body,
+    fontSize: 18,
+    color: colors.ink,
+    width: 84,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
+  },
   errorText: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.clay,
     marginTop: -spacing.sm,
   },
-  dateCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  dateValue: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.pineDeep,
-    lineHeight: 30,
-  },
-  pickerButtons: { flexDirection: 'row' },
   summaryLedger: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.lineStrong,

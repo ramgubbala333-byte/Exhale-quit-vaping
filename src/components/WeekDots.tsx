@@ -85,7 +85,7 @@ export default function WeekDots({
 
   return (
     <View style={[styles.wrap, style]}>
-      <Label color={colors.pine}>Your week</Label>
+      <Label>Your week</Label>
       <View style={styles.row}>
         {dots.map((d) => (
           <View key={d.key} style={styles.cell}>
@@ -114,7 +114,7 @@ export default function WeekDots({
         ))}
       </View>
       <Text style={styles.legend}>
-        Filled: vape-free day · Amber: slip day · Hollow: before this quit
+        Filled: vape-free day · Peach: slip day · Hollow: before this quit
         began
       </Text>
     </View>

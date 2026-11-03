@@ -1,20 +1,26 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import ArtPlate from '@/components/ArtPlate';
 import { CoinCollector } from '@/components/CoinCollector';
 import MaxWidth from '@/components/MaxWidth';
 import MilestoneCelebration from '@/components/MilestoneCelebration';
 import QuitTimer from '@/components/QuitTimer';
 import RecoveryRings from '@/components/RecoveryRings';
+import StateBlob from '@/components/StateBlob';
 import WeekDots from '@/components/WeekDots';
 import {
   Body,
+  CheckBadge,
+  CircleIconButton,
   Display,
   GhostButton,
   Label,
   PrimaryButton,
   Screen,
+  StatCard,
   StatRow,
 } from '@/components/ui';
 import {
@@ -53,7 +59,7 @@ import {
   type MilestoneState,
 } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 const homeWindowsill = require('../../assets/illustrations/02-home-windowsill.jpg');
 
@@ -195,13 +201,38 @@ export default function Home() {
   };
 
   return (
-    <Screen>
+    <Screen padBottom={120}>
       <MaxWidth>
-      <View style={styles.wordmarkRow}>
-        <Text style={styles.wordmark}>Mistless</Text>
-        <Text style={styles.dateText}>
-          {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </Text>
+      {/* PulseBuddy header: small round plate + name top-left, white
+          circular outline-icon buttons top-right. */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerPlate}>
+          <ArtPlate
+            source={homeWindowsill}
+            aspect={0.5}
+            widthPct={100}
+            label="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
+            style={{ marginVertical: 0 }}
+          />
+        </View>
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
+          <Text style={styles.headerName}>
+            {plan.userName ? `Hi, ${plan.userName}` : 'Mistless'}
+          </Text>
+          <Text style={styles.headerDate}>
+            {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
+        </View>
+        <CircleIconButton
+          icon="flag-outline"
+          label="Milestones"
+          onPress={() => router.push('/(tabs)/milestones')}
+        />
+        <CircleIconButton
+          icon="settings-outline"
+          label="Settings"
+          onPress={() => router.push('/(tabs)/settings')}
+        />
       </View>
 
       {taperActive ? (
@@ -222,14 +253,40 @@ export default function Home() {
         />
       ) : (
         <>
-          <Label color={colors.amber} style={{ marginTop: spacing.xl }}>
-            {momentLabel}
-          </Label>
-          <QuitTimer plan={plan} />
+          {/* Hero: the timer as the huge number, the state blob as the
+              status device, the daily line as the status line. */}
+          <View style={styles.heroCard}>
+            <View style={styles.heroRow}>
+              <View style={{ flex: 1 }}>
+                <Label color={colors.amber}>{momentLabel}</Label>
+                <QuitTimer plan={plan} />
+              </View>
+              <StateBlob tone="calm" size={104} />
+            </View>
+            <Text maxFontSizeMultiplier={1.3} style={styles.dailyLine}>
+              {dailyLine(now)}
+            </Text>
+          </View>
 
-          <Text maxFontSizeMultiplier={1.3} style={styles.dailyLine}>
-            {dailyLine(now)}
-          </Text>
+          {/* Three small stat cards under the hero. */}
+          <View style={styles.statTrio}>
+            <StatCard
+              label="Puffs avoided"
+              value={formatCount(puffsAvoided(plan, now))}
+              sub={`${unitsAvoided(plan, now).toFixed(1)} devices not bought`}
+            />
+            <StatCard
+              label="Streak"
+              value={formatDurationShort(streakSeconds)}
+              sub={`${formatCount(resisted)} resisted`}
+              style={{ marginHorizontal: spacing.sm }}
+            />
+            <StatCard
+              label="Votes"
+              value={formatCount(votes.total)}
+              sub="for who you're becoming"
+            />
+          </View>
         </>
       )}
 
@@ -242,43 +299,27 @@ export default function Home() {
       />
 
       {/* Craving help sits directly under the savings card, never
-          below a screenful of cards. */}
+          below a screenful of cards: one wide warm pill CTA. */}
       <Pressable
         onPress={() => router.push('/sos')}
         style={({ pressed }) => [
-          styles.sosButton,
+          styles.sosWrap,
           { opacity: pressed ? 0.88 : 1 },
         ]}>
-        <Text style={styles.sosTitle}>I have a craving</Text>
-        <Text style={styles.sosSub}>
-          Ride it out with a 3-minute breathing session
-        </Text>
+        <LinearGradient
+          colors={[...gradients.sos]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.sosButton}>
+          <Text style={styles.sosTitle}>I have a craving</Text>
+          <Text style={styles.sosSub}>
+            Ride it out with a 3-minute breathing session
+          </Text>
+        </LinearGradient>
       </Pressable>
 
       {!taperActive && (
         <>
-          <View style={styles.statPair}>
-            <View style={[styles.statCard, styles.statCardLeft]}>
-              <Label color={colors.pine}>Puffs avoided</Label>
-              <Text maxFontSizeMultiplier={1.3} style={styles.statNumber}>
-                {formatCount(puffsAvoided(plan, now))}
-              </Text>
-              <Text style={styles.statSub}>
-                {formatCount(resisted)} craving{resisted === 1 ? '' : 's'}{' '}
-                resisted
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Label color={colors.pine}>Devices not bought</Label>
-              <Text maxFontSizeMultiplier={1.3} style={styles.statNumber}>
-                {unitsAvoided(plan, now).toFixed(1)}
-              </Text>
-              <Text style={styles.statSub}>
-                Streak {formatDurationShort(streakSeconds)}
-              </Text>
-            </View>
-          </View>
-
           <Pressable
             onPress={() => router.push('/(tabs)/milestones')}
             style={({ pressed }) => [
@@ -303,7 +344,7 @@ export default function Home() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Label color={colors.pine}>Badges</Label>
+              <Label>Badges</Label>
               <Text style={styles.badgeCount}>
                 {earnedBadges.length} of {ACHIEVEMENTS.length} earned
               </Text>
@@ -313,19 +354,9 @@ export default function Home() {
                   : 'Every badge earned. Remarkable.'}
               </Text>
             </View>
-            <Text style={styles.noteChevron}>›</Text>
+            {!nextBadge && <CheckBadge />}
+            <Text style={styles.cardChevron}>›</Text>
           </Pressable>
-
-          <View style={styles.votesRow}>
-            <View style={styles.votesPill}>
-              <Text style={styles.votesPillText}>
-                {formatCount(votes.total)} vote{votes.total === 1 ? '' : 's'}
-              </Text>
-            </View>
-            <Text style={styles.votesCaption}>
-              for the person you are becoming
-            </Text>
-          </View>
 
           <View style={styles.card}>
             <WeekDots
@@ -345,40 +376,46 @@ export default function Home() {
           {next && (
             <Pressable
               onPress={() => router.push('/(tabs)/milestones')}
-              style={styles.milestoneTeaser}>
+              style={({ pressed }) => [
+                styles.milestoneCard,
+                { opacity: pressed ? 0.92 : 1 },
+              ]}>
               <View style={{ flex: 1 }}>
-                <Label color={colors.pine}>Next milestone</Label>
+                <Label>Next milestone</Label>
                 <Text style={styles.milestoneTitle}>
                   {next.label}: {next.title}
                 </Text>
                 <Text style={styles.milestoneRemaining}>
                   in {formatDurationShort(next.remainingSeconds)}
                 </Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${Math.round(progress * 100)}%` },
+                    ]}
+                  />
+                </View>
               </View>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { height: `${Math.round(progress * 100)}%` },
-                  ]}
-                />
-              </View>
+              <Text style={styles.cardChevron}>›</Text>
             </Pressable>
           )}
 
-          <View style={styles.homeArtFrame}>
-            <Image
-              source={homeWindowsill}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
-            />
-          </View>
+          <ArtPlate
+            source={homeWindowsill}
+            aspect={0.5}
+            widthPct={52}
+            label="Watercolor illustration of a windowsill with a small plant and a jar of coins in morning light"
+            style={{ marginTop: spacing.xl }}
+          />
         </>
       )}
 
       <View style={styles.missionCard}>
-        <Label color={colors.amber}>Today's mission</Label>
+        <View style={styles.missionHead}>
+          <Label color={colors.amber}>Today's mission</Label>
+          {missionRecord?.status === 'done' && <CheckBadge size={22} />}
+        </View>
         <Text style={styles.missionTitle}>{mission.title}</Text>
         <Text style={styles.missionDetail}>{mission.detail}</Text>
         {missionRecord?.status === 'done' ? (
@@ -415,15 +452,18 @@ export default function Home() {
 
       <Pressable
         onPress={() => router.push('/note-to-self')}
-        style={styles.milestoneTeaser}>
+        style={({ pressed }) => [
+          styles.milestoneCard,
+          { opacity: pressed ? 0.92 : 1 },
+        ]}>
         <View style={{ flex: 1 }}>
-          <Label color={colors.pine}>Note to self</Label>
+          <Label>Note to self</Label>
           <Text style={styles.milestoneTitle}>Your day-one declaration</Text>
           <Text style={styles.milestoneRemaining}>
             Read it on the hard days. It is still true.
           </Text>
         </View>
-        <Text style={styles.noteChevron}>›</Text>
+        <Text style={styles.cardChevron}>›</Text>
       </Pressable>
 
       <Body
@@ -468,11 +508,11 @@ function TaperPanel({
   const daysLeft = daysUntilFlip(plan, now);
 
   return (
-    <View>
-      <Label style={{ marginTop: spacing.lg }}>
+    <View style={styles.card}>
+      <Label>
         Cutting down · Week {week + 1}
       </Label>
-      <Display size={40} color={colors.pineDeep} style={{ marginTop: spacing.xs }}>
+      <Display size={38} color={colors.charcoal} style={{ marginTop: spacing.sm }}>
         {remaining > 0
           ? `${remaining} of ${budget} puffs left today`
           : "Today's budget is used up"}
@@ -504,86 +544,63 @@ function TaperPanel({
 }
 
 const styles = StyleSheet.create({
-  homeArtFrame: {
-    width: '52%',
-    alignSelf: 'center',
-    aspectRatio: 1 / 2,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    marginTop: spacing.xl,
-  },
-  artFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
-  wordmarkRow: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  wordmark: {
-    fontFamily: fonts.displayBold,
-    fontSize: 24,
-    color: colors.pineDeep,
+  headerPlate: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
   },
-  dateText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.inkMuted,
-  },
-  dailyLine: {
-    fontFamily: fonts.display,
+  headerName: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
-    lineHeight: 24,
-    color: colors.pine,
-    marginTop: spacing.lg,
+    color: colors.charcoal,
+  },
+  headerDate: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkMuted,
+    marginTop: 1,
+  },
+  heroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  heroRow: { flexDirection: 'row', alignItems: 'center' },
+  dailyLine: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    lineHeight: 23,
+    color: colors.violetGray,
+    marginTop: spacing.md,
+  },
+  statTrio: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
   },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.lg,
   },
-  statPair: {
-    flexDirection: 'row',
+  ledger: {
     marginTop: spacing.lg,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
-    padding: spacing.md,
-  },
-  statCardLeft: { marginRight: spacing.sm },
-  statNumber: {
-    fontFamily: fonts.displayBold,
-    fontSize: 32,
-    lineHeight: 38,
-    color: colors.pineDeep,
-    marginTop: spacing.xs,
-  },
-  statSub: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.inkMuted,
-    marginTop: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
   },
   badgeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.lg,
   },
@@ -595,7 +612,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: colors.pine,
+    backgroundColor: colors.periwinkle,
     borderWidth: 2,
     borderColor: colors.surface,
     alignItems: 'center',
@@ -606,10 +623,10 @@ const styles = StyleSheet.create({
   badgeMarkText: {
     fontFamily: fonts.bodyBold,
     fontSize: 11,
-    color: colors.amberBright,
+    color: colors.white,
   },
   badgeCount: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: colors.ink,
     marginTop: 2,
@@ -620,23 +637,16 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     marginTop: 2,
   },
-  ledger: {
-    marginTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
-  },
-  milestoneTeaser: {
+  milestoneCard: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   milestoneTitle: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     color: colors.ink,
     marginTop: 4,
@@ -647,61 +657,40 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     marginTop: 2,
   },
-  noteChevron: {
+  cardChevron: {
     fontFamily: fonts.display,
     fontSize: 26,
-    color: colors.amber,
+    color: colors.inkFaint,
     alignSelf: 'center',
     marginLeft: spacing.md,
   },
   progressTrack: {
-    width: 6,
+    height: 6,
     borderRadius: 3,
     backgroundColor: colors.surfaceMuted,
-    justifyContent: 'flex-end',
     overflow: 'hidden',
-    marginLeft: spacing.md,
+    marginTop: spacing.sm,
   },
   progressFill: {
-    width: '100%',
-    backgroundColor: colors.pine,
+    height: '100%',
+    backgroundColor: colors.periwinkle,
     borderRadius: 3,
-  },
-  votesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  votesPill: {
-    backgroundColor: colors.pine,
-    borderRadius: radii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginRight: spacing.sm,
-  },
-  votesPillText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.amberBright,
-  },
-  votesCaption: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.inkMuted,
-    flex: 1,
   },
   missionCard: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+  },
+  missionHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   missionTitle: {
     fontFamily: fonts.display,
     fontSize: 20,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     marginTop: spacing.xs,
   },
   missionDetail: {
@@ -712,9 +701,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   missionState: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
-    color: colors.pine,
+    color: colors.violetGray,
     marginTop: spacing.md,
   },
   missionButtons: {
@@ -722,23 +711,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
   },
+  sosWrap: { marginTop: spacing.lg },
   sosButton: {
-    backgroundColor: colors.amberBright,
-    borderRadius: radii.md,
+    borderRadius: radii.pill,
     paddingVertical: 18,
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
     alignItems: 'center',
   },
   sosTitle: {
     fontFamily: fonts.bodyBold,
     fontSize: 18,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
   sosSub: {
-    fontFamily: fonts.body,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: colors.pineDeep,
+    color: colors.charcoal,
+    opacity: 0.75,
     marginTop: 2,
   },
 });

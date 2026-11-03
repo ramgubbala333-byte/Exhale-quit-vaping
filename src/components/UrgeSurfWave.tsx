@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { haptics } from '../lib/haptics';
 import { colors, fonts, spacing } from '../theme';
+import StateBlob from './StateBlob';
 import { Body, Chip, Display, GhostButton, Label, PrimaryButton } from './ui';
 
 /**
@@ -128,6 +129,9 @@ export default function UrgeSurfWave({
 
       {phase === 'rate' && (
         <View style={{ marginTop: spacing.md }}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
+            <StateBlob tone="warm" size={120} />
+          </View>
           <Body color={colors.inkMuted}>
             First, be honest: how strong is this craving right now, from
             1 to 10? No judgement either way. Most cravings peak and fade
@@ -249,9 +253,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
+    borderRadius: 20,
     paddingVertical: spacing.md,
   },
   clock: {
@@ -273,9 +275,7 @@ const styles = StyleSheet.create({
   },
   scoreCard: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
+    borderRadius: 20,
     padding: spacing.lg,
   },
   scoreLine: {

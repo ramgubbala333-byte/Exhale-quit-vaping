@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Modal, Share, StyleSheet, Text, View } from 'react-native';
 
@@ -19,7 +20,7 @@ import {
 } from '@/lib/calc';
 import { milestoneStates, type MilestoneState } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 /**
  * One playful marker per milestone card (owner-directed exception to
@@ -80,7 +81,7 @@ export default function Milestones() {
   };
 
   return (
-    <Screen>
+    <Screen padBottom={120}>
       <MaxWidth>
       <Display size={32}>My health journey</Display>
       <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
@@ -98,8 +99,8 @@ export default function Milestones() {
                 style={[
                   styles.node,
                   {
-                    backgroundColor: m.reached ? colors.pine : colors.surface,
-                    borderColor: m.reached ? colors.pine : colors.lineStrong,
+                    backgroundColor: m.reached ? colors.check : colors.surface,
+                    borderColor: m.reached ? colors.check : colors.lineStrong,
                   },
                 ]}>
                 {m.reached && <Text style={styles.nodeCheck}>✓</Text>}
@@ -110,7 +111,7 @@ export default function Milestones() {
                     styles.connector,
                     {
                       backgroundColor: m.reached
-                        ? colors.pine
+                        ? colors.periwinkle
                         : colors.line,
                     },
                   ]}
@@ -122,7 +123,7 @@ export default function Milestones() {
                 styles.card,
                 !m.reached && styles.cardUpcoming,
               ]}>
-              <Label color={m.reached ? colors.pine : colors.inkFaint}>
+              <Label color={m.reached ? colors.violetGray : colors.inkFaint}>
                 {m.label}
               </Label>
               <Text style={styles.rowTitle}>
@@ -161,8 +162,12 @@ export default function Milestones() {
         animationType="fade"
         onRequestClose={() => setShareTarget(null)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.shareCard}>
-            <Label color={colors.amberBright}>Mistless · Milestone</Label>
+          <LinearGradient
+            colors={[...gradients.hero]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.shareCard}>
+            <Label color={colors.lavender}>Mistless · Milestone</Label>
             <Text style={styles.shareCardTitle}>
               {shareTarget?.label}: {shareTarget?.title}
             </Text>
@@ -172,7 +177,7 @@ export default function Milestones() {
             <Text style={styles.shareCardSub}>
               {formatMoneyExact(saved)} kept so far
             </Text>
-          </View>
+          </LinearGradient>
           <View style={styles.modalActions}>
             <PrimaryButton title="Share" onPress={doShare} />
             <GhostButton title="Close" onPress={() => setShareTarget(null)} />
@@ -197,7 +202,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nodeCheck: {
-    color: colors.bg,
+    color: colors.white,
     fontSize: 12,
     fontFamily: fonts.bodyBold,
     lineHeight: 14,
@@ -206,15 +211,12 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   cardUpcoming: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.line,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   rowTitle: {
     fontFamily: fonts.display,
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   rowMeta: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     color: colors.amber,
     marginTop: 6,
@@ -239,12 +241,11 @@ const styles = StyleSheet.create({
   estimatesNote: { marginBottom: spacing.xl, marginTop: -spacing.sm },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(12, 46, 40, 0.55)',
+    backgroundColor: 'rgba(42, 42, 45, 0.45)',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
   shareCard: {
-    backgroundColor: colors.pine,
     borderRadius: radii.lg,
     padding: spacing.xl,
   },
@@ -252,24 +253,24 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 24,
     lineHeight: 31,
-    color: colors.bg,
+    color: colors.white,
     marginTop: spacing.sm,
   },
   shareCardBig: {
     fontFamily: fonts.displayBold,
     fontSize: 34,
-    color: colors.bg,
+    color: colors.white,
     marginTop: spacing.lg,
   },
   shareCardSub: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    color: colors.amberBright,
+    color: colors.lavender,
     marginTop: spacing.xs,
   },
   modalActions: {
     marginTop: spacing.lg,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     padding: spacing.md,
   },

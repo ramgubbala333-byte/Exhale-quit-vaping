@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import ArtPlate from '@/components/ArtPlate';
 import MaxWidth from '@/components/MaxWidth';
-import { Body, Display, Label, PrimaryButton, Screen } from '@/components/ui';
+import { Body, Card, Display, Label, PrimaryButton, Screen } from '@/components/ui';
 import { dailyCost, formatCount, formatMoney, projections } from '@/lib/calc';
 import { nextMilestone } from '@/lib/milestones';
 import { useStore } from '@/store/useStore';
@@ -49,14 +50,12 @@ export default function Reveal() {
   return (
     <Screen>
       <MaxWidth>
-        <View style={styles.headerArtFrame}>
-          <Image
-            source={planDesk}
-            style={styles.artFill}
-            resizeMode="cover"
-            accessibilityLabel="Watercolor illustration of a desk at dusk with a lamp, an open notebook, and a phone face-down"
-          />
-        </View>
+        <ArtPlate
+          source={planDesk}
+          aspect={2 / 3}
+          widthPct={52}
+          label="Watercolor illustration of a desk at dusk with a lamp, an open notebook, and a phone face-down"
+        />
         <Label color={colors.amber}>Your plan</Label>
         <Display size={34} style={{ marginTop: spacing.xs }}>
           Your plan is already moving
@@ -66,7 +65,7 @@ export default function Reveal() {
           because you just did them:
         </Body>
 
-        <View style={styles.stamps}>
+        <Card style={{ marginTop: spacing.lg }}>
           {STAMPS.map((s, i) => (
             <View
               key={s}
@@ -84,7 +83,7 @@ export default function Reveal() {
               <Text style={styles.stampCheck}>✓</Text>
             </View>
           ))}
-        </View>
+        </Card>
 
         <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
           What quitting pays back
@@ -98,7 +97,7 @@ export default function Reveal() {
         </Text>
         <Text style={styles.bigCaption}>in a year 🤑</Text>
 
-        <View style={[styles.ledger, { marginTop: spacing.xl }]}>
+        <Card style={{ marginTop: spacing.xl }}>
           <RevealLine label="Kept in 1 week" value={formatMoney(perDay * 7)} />
           <RevealLine
             label="Kept in 6 months"
@@ -109,7 +108,7 @@ export default function Reveal() {
             value={formatCount(plan.puffsPerDay * 365)}
             last
           />
-        </View>
+        </Card>
 
         {first && (
           <Body color={colors.inkMuted} style={{ marginTop: spacing.lg }}>
@@ -158,34 +157,12 @@ function RevealLine({
 }
 
 const styles = StyleSheet.create({
-  headerArtFrame: {
-    width: '52%',
-    alignSelf: 'center',
-    aspectRatio: 2 / 3,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    marginBottom: spacing.lg,
-  },
-  artFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
-  stamps: {
-    marginTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
-  },
   stampRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.lineStrong,
+    borderBottomColor: colors.line,
   },
   stampIndex: {
     fontFamily: fonts.display,
@@ -196,7 +173,7 @@ const styles = StyleSheet.create({
   stampCheck: {
     fontFamily: fonts.bodyBold,
     fontSize: 18,
-    color: colors.pine,
+    color: colors.check,
     marginLeft: spacing.md,
   },
   stampTitle: {
@@ -210,24 +187,20 @@ const styles = StyleSheet.create({
   stampText: {
     fontFamily: fonts.display,
     fontSize: 19,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
   bigNumber: {
     fontFamily: fonts.displayBold,
     fontSize: 52,
     lineHeight: 58,
-    color: colors.pine,
+    color: colors.charcoal,
     marginTop: spacing.sm,
   },
   bigCaption: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
     color: colors.inkMuted,
     marginTop: 2,
-  },
-  ledger: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
   },
   line: {
     flexDirection: 'row',
@@ -235,20 +208,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.lineStrong,
+    borderBottomColor: colors.line,
   },
   lineLabel: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     color: colors.ink,
   },
   lineValue: {
     fontFamily: fonts.display,
     fontSize: 20,
-    color: colors.pine,
+    color: colors.violetGray,
   },
   emphasis: {
-    fontFamily: fonts.bodySemiBold,
-    color: colors.pineDeep,
+    fontFamily: fonts.bodyBold,
+    color: colors.charcoal,
   },
 });

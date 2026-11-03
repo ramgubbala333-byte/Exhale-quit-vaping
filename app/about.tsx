@@ -1,8 +1,9 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Body, Display, GhostButton, Label, Screen } from '@/components/ui';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { Body, Card, Display, GhostButton, Label, Screen } from '@/components/ui';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 function FaqRow({
   q,
@@ -24,7 +25,7 @@ function FaqRow({
 export default function About() {
   return (
     <Screen>
-      <Label color={colors.pine}>About</Label>
+      <Label>About</Label>
       <Display size={34} style={{ marginTop: spacing.xs }}>
         Mistless
       </Display>
@@ -32,59 +33,71 @@ export default function About() {
         A calm, private companion for quitting vaping. Version 1.0.
       </Body>
 
-      <View style={styles.privacyBand}>
-        <Body color={colors.bg} size={17} style={styles.privacyText}>
+      <LinearGradient
+        colors={[...gradients.hero]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.privacyBand}>
+        <Body color={colors.white} size={17} style={styles.privacyText}>
           No account. No tracking. Mistless collects nothing — your data
           never leaves this phone unless you export it yourself.
         </Body>
-      </View>
+      </LinearGradient>
 
-      <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
-        Private by design
-      </Label>
-      <Body>
-        Mistless is local-first. Everything you enter lives in storage on
-        this phone only. There is no account, no server, and no analytics,
-        and your data never leaves this device unless you deliberately
-        export it yourself from Settings. If you delete the app, the data
-        goes with it.
-      </Body>
+      <Card style={{ marginTop: spacing.lg }}>
+        <Label style={{ marginBottom: spacing.sm }}>
+          Private by design
+        </Label>
+        <Body>
+          Mistless is local-first. Everything you enter lives in storage on
+          this phone only. There is no account, no server, and no analytics,
+          and your data never leaves this device unless you deliberately
+          export it yourself from Settings. If you delete the app, the data
+          goes with it.
+        </Body>
+      </Card>
 
-      <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
-        About the health timeline
-      </Label>
-      <Body>
-        The milestone descriptions summarise general wellness information
-        published by public health sources about how the body recovers
-        after quitting nicotine. They are general population-level
-        estimates (WHO/CDC), not personal measurements. They are
-        educational, not medical advice, and individual experiences vary.
-        If you have symptoms that worry you, talk to a clinician. If
-        cravings feel unmanageable, free help lines such as 1-800-QUIT-NOW
-        (US) can connect you with a trained quit coach.
-      </Body>
+      <Card style={{ marginTop: spacing.lg }}>
+        <Label style={{ marginBottom: spacing.sm }}>
+          About the health timeline
+        </Label>
+        <Body>
+          The milestone descriptions summarise general wellness information
+          published by public health sources about how the body recovers
+          after quitting nicotine. They are general population-level
+          estimates (WHO/CDC), not personal measurements. They are
+          educational, not medical advice, and individual experiences vary.
+          If you have symptoms that worry you, talk to a clinician. If
+          cravings feel unmanageable, free help lines such as 1-800-QUIT-NOW
+          (US) can connect you with a trained quit coach.
+        </Body>
+      </Card>
 
-      <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
-        Important
-      </Label>
-      <Body>
-        Mistless is not a medical device and does not diagnose, treat, cure,
-        or prevent any medical condition. Talk to a healthcare professional
-        for medical advice.
-      </Body>
+      <Card style={{ marginTop: spacing.lg }}>
+        <Label style={{ marginBottom: spacing.sm }}>
+          Important
+        </Label>
+        <Body>
+          Mistless is not a medical device and does not diagnose, treat, cure,
+          or prevent any medical condition. Talk to a healthcare professional
+          for medical advice.
+        </Body>
+      </Card>
 
-      <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
-        Free, for now and honestly
-      </Label>
-      <Body>
-        Mistless is fully free. A Plus tier is planned for the future; if it
-        launches, everything you use today stays free.
-      </Body>
+      <Card style={{ marginTop: spacing.lg }}>
+        <Label style={{ marginBottom: spacing.sm }}>
+          Free, for now and honestly
+        </Label>
+        <Body>
+          Mistless is fully free. A Plus tier is planned for the future; if it
+          launches, everything you use today stays free.
+        </Body>
+      </Card>
 
       <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
         Questions, answered plainly
       </Label>
-      <View>
+      <Card>
         <FaqRow
           q="Is Mistless free?"
           a="Yes, completely. The counter, SOS, lapse rescue, plans, missions and health timeline are free forever. A paid Plus tier may add extras one day; nothing you use now will move behind it."
@@ -110,7 +123,7 @@ export default function About() {
           a="No. Mistless is not a medical device and does not diagnose, treat, cure, or prevent any condition. The health timeline is general population-level information from public sources like the WHO and CDC, not medical advice about you. Talk to a healthcare professional for medical advice, and call 1-800-QUIT-NOW (US) if cravings feel unmanageable."
           last
         />
-      </View>
+      </Card>
 
       <View style={{ marginTop: spacing.xl }}>
         <GhostButton title="Back" onPress={() => router.back()} />
@@ -123,12 +136,12 @@ const styles = StyleSheet.create({
   faqRow: {
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.lineStrong,
+    borderBottomColor: colors.line,
   },
   faqQ: {
     fontFamily: fonts.display,
     fontSize: 17,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     marginBottom: 4,
   },
   faqA: {
@@ -138,11 +151,10 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
   },
   privacyBand: {
-    backgroundColor: colors.pine,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginTop: spacing.lg,
   },
-  privacyText: { fontFamily: fonts.bodySemiBold },
+  privacyText: { fontFamily: fonts.bodyBold },
 });

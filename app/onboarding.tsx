@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,23 +13,25 @@ import {
   View,
 } from 'react-native';
 
+import ArtPlate from '@/components/ArtPlate';
 import FlavourPicker from '@/components/FlavourPicker';
 import IfThenPlanForm from '@/components/IfThenPlanForm';
 import MistVeil from '@/components/MistVeil';
 import {
   Body,
+  Card,
   Chip,
   Display,
   Field,
   GhostButton,
   Label,
-  PrimaryButton,
   Screen,
+  WhiteButton,
 } from '@/components/ui';
 import { formatDate, taperBudgetForWeek, taperZeroDate } from '@/lib/calc';
 import { REASON_OPTIONS } from '@/lib/reasons';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 const welcomeMist = require('../assets/illustrations/01-welcome-mist.jpg');
 import type { DeviceType, Plan, QuitApproach } from '@/types';
@@ -252,44 +253,47 @@ export default function Onboarding() {
   return (
     <View style={{ flex: 1 }}>
       <MistVeil progress={step / (STEPS.length - 1)} />
-      <Screen>
+      <Screen gradientBg={gradients.onboarding}>
         <View style={styles.progressRow}>
           {STEPS.map((s, i) => (
             <View
               key={s}
               style={[
                 styles.progressSegment,
-                { backgroundColor: i <= step ? colors.pine : colors.line },
+                {
+                  backgroundColor:
+                    i <= step ? colors.white : 'rgba(255,255,255,0.35)',
+                },
               ]}
             />
           ))}
         </View>
-        <Label style={{ marginBottom: spacing.xs }}>{STEPS[step]}</Label>
+        <Label color={colors.white} style={{ marginBottom: spacing.xs }}>
+          {STEPS[step]}
+        </Label>
 
         {step === 0 && (
           <View>
-            <View style={styles.welcomeArtFrame}>
-              <Image
-                source={welcomeMist}
-                style={styles.artFill}
-                resizeMode="cover"
-                accessibilityLabel="Watercolor illustration of morning mist thinning at a window"
-              />
-            </View>
-            <Display size={34} style={{ marginBottom: spacing.md }}>
+            <ArtPlate
+              source={welcomeMist}
+              aspect={0.5}
+              widthPct={62}
+              label="Watercolor illustration of morning mist thinning at a window"
+            />
+            <Display size={34} color={colors.white} style={{ marginBottom: spacing.md }}>
               Ready to break up with your vape? 👋
             </Display>
-            <Body size={16} color={colors.inkMuted}>
+            <Body size={16} color={colors.white}>
               Good. Mistless is the calm companion for it: your streak, the
               money you keep, your health coming back, and a plan for the
               craving moments. Everything stays on this phone. No account,
               no feed, no noise.
             </Body>
-            <Body size={16} color={colors.inkMuted} style={{ marginTop: spacing.md }}>
+            <Body size={16} color={colors.white} style={{ marginTop: spacing.md }}>
               Setting up takes a minute. Two sentences and we begin.
             </Body>
 
-            <Text style={styles.sentenceLabel}>Hi, my name is</Text>
+            <Text style={[styles.sentenceLabel, { color: colors.white }]}>Hi, my name is</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -300,7 +304,7 @@ export default function Onboarding() {
               style={styles.pillInput}
             />
 
-            <Text style={styles.sentenceLabel}>I quit vaping on</Text>
+            <Text style={[styles.sentenceLabel, { color: colors.white }]}>I quit vaping on</Text>
             <Pressable
               onPress={() => setPicker({ which: 'quit', mode: 'date' })}
               style={({ pressed }) => [
@@ -309,7 +313,7 @@ export default function Onboarding() {
               ]}>
               <Text style={styles.pillText}>{momentLabel(quitDate)}</Text>
             </Pressable>
-            <Body size={13} color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
+            <Body size={13} color={colors.white} style={{ marginTop: spacing.sm }}>
               Tap to set the moment of your last puff. Quitting right now?
               Leave it exactly as it is.
             </Body>
@@ -318,14 +322,15 @@ export default function Onboarding() {
 
         {step === 1 && (
           <View>
-            <Display size={30} style={{ marginBottom: spacing.sm }}>
+            <Display size={30} color={colors.white} style={{ marginBottom: spacing.sm }}>
               The old habit, honestly
             </Display>
-            <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+            <Body color={colors.white} style={{ marginBottom: spacing.lg }}>
               Rough numbers are fine. They power your savings and milestone
               math, and you can edit them later.
             </Body>
 
+            <Card style={styles.formCard}>
             <Text style={styles.sentenceLabel}>
               I used to go through an entire
             </Text>
@@ -435,19 +440,21 @@ export default function Onboarding() {
                 />
               </View>
             )}
+            </Card>
           </View>
         )}
 
         {step === 2 && (
           <View>
-            <Display size={30} style={{ marginBottom: spacing.sm }}>
+            <Display size={30} color={colors.white} style={{ marginBottom: spacing.sm }}>
               Your plan to stay quit
             </Display>
-            <Body color={colors.inkMuted} style={{ marginBottom: spacing.lg }}>
+            <Body color={colors.white} style={{ marginBottom: spacing.lg }}>
               Three quick things: how you quit, why, and one plan for the
               hard moment.
             </Body>
 
+            <Card style={styles.formCard}>
             <Label style={{ marginBottom: spacing.sm }}>
               Quit now, or cut down first?
             </Label>
@@ -604,6 +611,7 @@ export default function Onboarding() {
                 onSubmit={(trigger, action) => setPlanDraft({ trigger, action })}
               />
             )}
+            </Card>
           </View>
         )}
 
@@ -623,24 +631,35 @@ export default function Onboarding() {
 
         <View style={styles.footer}>
           {step < 2 ? (
-            <PrimaryButton
-              title="Continue"
-              disabled={!canContinue}
-              onPress={() => setStep((s) => Math.min(2, s + 1))}
-            />
+            <View style={!canContinue && { opacity: 0.5 }}>
+              <WhiteButton
+                title="Continue"
+                color={colors.charcoal}
+                onPress={() => {
+                  if (canContinue) setStep((s) => Math.min(2, s + 1));
+                }}
+              />
+            </View>
           ) : (
-            <PrimaryButton
-              title="See my plan"
-              disabled={!canContinue}
-              haptic="commit"
-              onPress={finish}
-            />
+            <View style={!canContinue && { opacity: 0.5 }}>
+              <WhiteButton
+                title="See my plan"
+                color={colors.charcoal}
+                onPress={() => {
+                  if (canContinue) finish();
+                }}
+              />
+            </View>
           )}
           {step > 0 && (
-            <GhostButton
-              title="Back"
+            <Pressable
               onPress={() => setStep((s) => Math.max(0, s - 1))}
-            />
+              style={({ pressed }) => [
+                styles.backButton,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
           )}
         </View>
       </Screen>
@@ -689,22 +708,15 @@ function SummaryLine({
 }
 
 const styles = StyleSheet.create({
-  welcomeArtFrame: {
-    width: '62%',
-    alignSelf: 'center',
-    aspectRatio: 1 / 2,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    marginBottom: spacing.lg,
+  formCard: { padding: spacing.lg },
+  backButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
   },
-  artFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
+  backButtonText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: colors.white,
   },
   progressRow: {
     flexDirection: 'row',
@@ -720,14 +732,14 @@ const styles = StyleSheet.create({
   sentenceLabel: {
     fontFamily: fonts.display,
     fontSize: 24,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
   sentenceLabelInline: {
     fontFamily: fonts.display,
     fontSize: 24,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
   sentenceRow: {
     flexDirection: 'row',
@@ -754,9 +766,9 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   pillText: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    color: colors.pine,
+    color: colors.violetGray,
   },
   daysInput: {
     backgroundColor: colors.surface,
@@ -800,14 +812,12 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontFamily: fonts.display,
     fontSize: 20,
-    color: colors.pine,
+    color: colors.violetGray,
   },
   footer: { marginTop: spacing.xl },
   planRow: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 20,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     marginBottom: spacing.md,
@@ -816,6 +826,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 18,
     lineHeight: 26,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
 });

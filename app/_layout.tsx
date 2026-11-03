@@ -1,17 +1,15 @@
 import {
-  Archivo_400Regular,
-  Archivo_500Medium,
-  Archivo_600SemiBold,
-  Archivo_700Bold,
-} from '@expo-google-fonts/archivo';
-import {
-  Fraunces_600SemiBold,
-  Fraunces_700Bold,
-} from '@expo-google-fonts/fraunces';
+  Nunito_400Regular,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from '@expo-google-fonts/nunito';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { Fragment, useEffect } from 'react';
 import { View } from 'react-native';
 
 import { setupNotificationHandler } from '@/lib/notifications';
@@ -22,12 +20,11 @@ setupNotificationHandler();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces_600SemiBold,
-    Fraunces_700Bold,
-    Archivo_400Regular,
-    Archivo_500Medium,
-    Archivo_600SemiBold,
-    Archivo_700Bold,
+    Nunito_400Regular,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
   });
 
   useEffect(() => {
@@ -41,23 +38,26 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.bg },
-      }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="reveal" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen
-        name="sos"
-        options={{ presentation: 'modal', gestureEnabled: false }}
-      />
-      <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="note" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="note-to-self" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="about" options={{ presentation: 'modal' }} />
-    </Stack>
+    <Fragment>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+        }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="reveal" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="sos"
+          options={{ presentation: 'modal', gestureEnabled: false }}
+        />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="note" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="note-to-self" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="about" options={{ presentation: 'modal' }} />
+      </Stack>
+    </Fragment>
   );
 }

@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import CravingBarChart, { type DayCravings } from '@/components/CravingBarChart';
+import ArtPlate from '@/components/ArtPlate';
+import { CravingWaveChart, TrendBarChart } from '@/components/CravingCharts';
 import CravingForecast from '@/components/CravingForecast';
 import MaxWidth from '@/components/MaxWidth';
 import {
@@ -12,6 +13,7 @@ import {
 import TriggerHeatmap from '@/components/TriggerHeatmap';
 import {
   Body,
+  Card,
   Display,
   GhostButton,
   Label,
@@ -56,33 +58,6 @@ export default function Stats() {
     freeSeconds: bankedFreeSeconds,
   };
 
-  const week = useMemo<DayCravings[]>(() => {
-    const days: DayCravings[] = [];
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const sameDay = (iso: string) => {
-        const t = new Date(iso);
-        return (
-          t.getFullYear() === d.getFullYear() &&
-          t.getMonth() === d.getMonth() &&
-          t.getDate() === d.getDate()
-        );
-      };
-      days.push({
-        label: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
-        resisted: cravings.filter(
-          (c) => c.outcome === 'resisted' && sameDay(c.timestamp),
-        ).length,
-        slipped: cravings.filter(
-          (c) => c.outcome === 'slipped' && sameDay(c.timestamp),
-        ).length,
-      });
-    }
-    return days;
-  }, [cravings]);
-
   const peakHour = useMemo<string>(() => {
     if (cravings.length === 0) return 'No cravings logged yet';
     const byHour = new Array(24).fill(0) as number[];
@@ -117,7 +92,7 @@ export default function Stats() {
   });
 
   return (
-    <Screen>
+    <Screen padBottom={120}>
       <MaxWidth>
       <Display size={32}>Your numbers</Display>
       <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
@@ -126,7 +101,7 @@ export default function Stats() {
       </Body>
 
       {total === 0 && (
-        <View style={styles.emptyCard}>
+        <Card style={{ marginTop: spacing.lg }}>
           <Text style={styles.emptyTitle}>Nothing logged yet, and that is fine</Text>
           <Body color={colors.inkMuted} style={{ marginTop: spacing.sm }}>
             These charts wake up the first time a craving hits and you
@@ -136,35 +111,40 @@ export default function Stats() {
           <View style={styles.emptyAction}>
             <GhostButton title="Open SOS" onPress={() => router.push('/sos')} />
           </View>
-        </View>
+        </Card>
       )}
 
-      <Label style={styles.sectionLabel}>Cravings, last 7 days</Label>
-      <View style={styles.chartCard}>
-        <CravingBarChart data={week} />
-      </View>
+      <Label style={styles.sectionLabel}>Cravings through the day</Label>
+      <Card>
+        <CravingWaveChart cravings={cravings} />
+      </Card>
+
+      <Label style={styles.sectionLabel}>Craving trend</Label>
+      <Card>
+        <TrendBarChart cravings={cravings} />
+      </Card>
 
       <Label style={styles.sectionLabel}>When cravings hit</Label>
-      <View style={styles.chartCard}>
+      <Card>
         <TriggerHeatmap cravings={cravings} />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Your danger window</Label>
-      <View style={styles.chartCard}>
+      <Card>
         <CravingForecast cravings={cravings} />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Craving record</Label>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow label="Cravings faced" value={formatCount(total)} />
         <StatRow label="Resisted" value={formatCount(resisted)} />
         <StatRow label="Slipped" value={formatCount(slipped)} />
         <StatRow label="Resist rate" value={resistRate} />
         <StatRow label="Peak craving time" value={peakHour} last />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Streaks</Label>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow
           label="Current streak"
           value={formatDurationShort(currentStreak)}
@@ -184,7 +164,7 @@ export default function Stats() {
           detail="Each restart still counts. Quitting often takes a few runs."
           last
         />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Identity votes</Label>
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.sm }}>
@@ -193,7 +173,7 @@ export default function Stats() {
         casts one. Votes are evidence, and evidence is never taken away:
         a slip cannot uncast a single one.
       </Body>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow
           label="Votes from cravings resisted"
           value={formatCount(votes.fromResisted)}
@@ -207,20 +187,20 @@ export default function Stats() {
           value={formatCount(votes.fromDays)}
           last
         />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Daily missions</Label>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow
           label="Missions completed, all time"
           value={formatCount(missionsDone)}
           detail="One small task a day. Skips cost nothing and are not counted against you."
           last
         />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Money and puffs, this run</Label>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow label="Money kept this run" value={formatMoneyExact(saved)} />
         <StatRow
           label="That is roughly, per month"
@@ -231,7 +211,7 @@ export default function Stats() {
           value={formatCount(puffsAvoided(plan))}
           last
         />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>Lifetime</Label>
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.sm }}>
@@ -239,7 +219,7 @@ export default function Stats() {
         and never go down: a slip restarts the current streak, it does not
         touch anything here.
       </Body>
-      <View style={styles.ledger}>
+      <Card>
         <StatRow
           label="Total money kept, all attempts"
           value={formatMoneyExact(lifetimeMoney)}
@@ -259,67 +239,31 @@ export default function Stats() {
           detail="Adding up every streak you have ever held."
           last
         />
-      </View>
+      </Card>
 
       <Label style={styles.sectionLabel}>
         {savingsGoal ? 'Your savings goal' : 'Coin collector'}
       </Label>
-      <View style={styles.jarArtFrame}>
-        <Image
+      <Card>
+        <ArtPlate
           source={savingsJarArt}
-          style={styles.artFill}
-          resizeMode="cover"
-          accessibilityLabel="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
+          aspect={0.5}
+          widthPct={52}
+          label="Watercolor illustration of a glass jar full of coins in warm late-afternoon light, with a folded list and a pencil beside it"
         />
-      </View>
-      {savingsGoal ? (
-        <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
-      ) : (
-        <LifetimeCoinJar moneyKept={lifetimeMoney} />
-      )}
+        {savingsGoal ? (
+          <SavingsGoalJar goal={savingsGoal} moneyKept={lifetimeMoney} />
+        ) : (
+          <LifetimeCoinJar moneyKept={lifetimeMoney} />
+        )}
+      </Card>
     </MaxWidth>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  jarArtFrame: {
-    width: '52%',
-    alignSelf: 'center',
-    aspectRatio: 1 / 2,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-  },
-  artFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
   sectionLabel: { marginTop: spacing.xl, marginBottom: spacing.sm },
-  chartCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
-    padding: spacing.md,
-  },
-  ledger: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-  },
   emptyTitle: {
     fontFamily: fonts.display,
     fontSize: 19,

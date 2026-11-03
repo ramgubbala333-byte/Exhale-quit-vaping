@@ -1,7 +1,7 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -12,10 +12,13 @@ import {
   View,
 } from 'react-native';
 
+import ArtPlate from '@/components/ArtPlate';
 import BreathingCircle, { BREATH_PATTERNS } from '@/components/BreathingCircle';
 import IfThenPlanForm from '@/components/IfThenPlanForm';
+import StateBlob from '@/components/StateBlob';
 import {
   Body,
+  Card,
   Chip,
   Display,
   GhostButton,
@@ -36,7 +39,7 @@ import {
 import { haptics } from '@/lib/haptics';
 import { planForTrigger, TRIGGERS } from '@/lib/plans';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 const sosShore = require('../assets/illustrations/01-sos-shore.jpg');
 const rescueLamp = require('../assets/illustrations/03-rescue-lamp.jpg');
@@ -256,6 +259,9 @@ export default function Sos() {
     <Screen>
       {tagging && (
         <View>
+          <View style={{ alignItems: 'center' }}>
+            <StateBlob tone="warm" size={110} />
+          </View>
           <Label color={colors.amber}>One quick thing</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
             What set it off?
@@ -303,14 +309,12 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'menu' && (
         <View>
-          <View style={styles.headerArtFrameTall}>
-            <Image
-              source={sosShore}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of a calm shoreline at dawn, one wave receding"
-            />
-          </View>
+          <ArtPlate
+            source={sosShore}
+            aspect={0.5}
+            widthPct={52}
+            label="Watercolor illustration of a calm shoreline at dawn, one wave receding"
+          />
           <Label color={colors.amber}>Craving toolkit</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             Pick your tool
@@ -406,6 +410,9 @@ export default function Sos() {
             Cravings crest and fade in about three minutes. Or try Ride the
             wave from the tools menu for the full five-minute version.
           </Body>
+          <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
+            <StateBlob tone="warm" size={120} />
+          </View>
           <Text style={styles.countdown} maxFontSizeMultiplier={1.2}>{formatClock(remaining)}</Text>
           {remaining === 0 && (
             <Text style={styles.passedNote}>
@@ -428,6 +435,9 @@ export default function Sos() {
             Not forever. Just ten minutes. When the clock ends, check back
             in with yourself.
           </Body>
+          <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
+            <StateBlob tone="warm" size={120} />
+          </View>
           <Text style={styles.countdown} maxFontSizeMultiplier={1.2}>{formatClock(remaining)}</Text>
           {remaining === 0 ? (
             <View>
@@ -451,14 +461,12 @@ export default function Sos() {
 
       {!tagging && flow === 'active' && tool === 'why' && (
         <View>
-          <View style={styles.headerArtFrame}>
-            <Image
-              source={supportLetter}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of a letter, a phone, and a cup of tea under lamplight"
-            />
-          </View>
+          <ArtPlate
+            source={supportLetter}
+            aspect={2 / 3}
+            widthPct={52}
+            label="Watercolor illustration of a letter, a phone, and a cup of tea under lamplight"
+          />
           <Label color={colors.amber}>Why cards</Label>
           <Display size={30} style={{ marginTop: spacing.xs }}>
             Your reasons, up close
@@ -476,13 +484,22 @@ export default function Sos() {
             style={{ marginTop: spacing.lg, marginHorizontal: -spacing.lg }}
             contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
             {(plan?.reasons ?? []).map((r, i) => (
-              <View key={i} style={[styles.whyCard, { width: width - spacing.lg * 2 - 8 }]}>
-                <Label color={colors.amberBright}>Reason {i + 1}</Label>
+              <LinearGradient
+                key={i}
+                colors={[...gradients.hero]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.whyCard, { width: width - spacing.lg * 2 - 8 }]}>
+                <Label color={colors.lavender}>Reason {i + 1}</Label>
                 <Text style={styles.whyText}>{r}</Text>
-              </View>
+              </LinearGradient>
             ))}
-            <View style={[styles.whyCard, { width: width - spacing.lg * 2 - 8 }]}>
-              <Label color={colors.amberBright}>What it is buying you</Label>
+            <LinearGradient
+              colors={[...gradients.hero]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.whyCard, { width: width - spacing.lg * 2 - 8 }]}>
+              <Label color={colors.lavender}>What it is buying you</Label>
               <Text style={styles.whyText}>
                 {formatMoneyExact(lifetimeSaved)} kept so far
               </Text>
@@ -491,7 +508,7 @@ export default function Sos() {
                   That is {Math.floor(goalPercent)}% of your {savingsGoal.name}.
                 </Text>
               )}
-            </View>
+            </LinearGradient>
           </ScrollView>
           <View style={{ marginTop: spacing.xl }}>
             <PrimaryButton title="That helped, log it as resisted" onPress={onResisted} />
@@ -502,7 +519,8 @@ export default function Sos() {
 
       {!tagging && flow === 'resisted' && (
         <View style={styles.centerBlock}>
-          <Label color={colors.pine}>Logged</Label>
+          <StateBlob tone="calm" size={130} />
+          <Label style={{ marginTop: spacing.lg }}>Logged</Label>
           <Display size={34} style={{ marginTop: spacing.sm }}>
             That one is behind you
           </Display>
@@ -522,14 +540,12 @@ export default function Sos() {
 
       {!tagging && flow === 'slipped' && rescueStep === 0 && (
         <View>
-          <View style={styles.headerArtFrame}>
-            <Image
-              source={rescueLamp}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of the desk after rain, the lamp lit again, a fresh blank page"
-            />
-          </View>
+          <ArtPlate
+            source={rescueLamp}
+            aspect={2 / 3}
+            widthPct={52}
+            label="Watercolor illustration of the desk after rain, the lamp lit again, a fresh blank page"
+          />
           <Label color={colors.clay}>Rescue, step 1 of 3</Label>
           <Display size={32} style={{ marginTop: spacing.xs }}>
             A slip is data, not a verdict
@@ -565,7 +581,7 @@ export default function Sos() {
             These totals count every attempt you have ever made, and they
             do not go down. Ever.
           </Body>
-          <View style={styles.ledger}>
+          <Card style={{ marginTop: spacing.lg }}>
             <StatRow
               label="Money kept, all attempts"
               value={formatMoneyExact(lifetimeSaved)}
@@ -583,7 +599,7 @@ export default function Sos() {
               value={`${Math.floor(lifetimeFree / 86400)} days`}
               last
             />
-          </View>
+          </Card>
           <View style={{ marginTop: spacing.xl }}>
             <PrimaryButton
               title="Plan for the moment that got me"
@@ -678,27 +694,23 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   toolRow: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
   personRow: {
     backgroundColor: colors.pineSoft,
-    borderWidth: 1,
-    borderColor: colors.pine,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.sm,
   },
   planRow: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.lineStrong,
+    borderBottomColor: colors.line,
     paddingVertical: 10,
   },
   planTrigger: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: colors.ink,
   },
@@ -709,8 +721,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   planCard: {
-    backgroundColor: colors.pine,
-    borderRadius: radii.md,
+    backgroundColor: colors.pineSoft,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.md,
   },
@@ -718,19 +730,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 20,
     lineHeight: 28,
-    color: colors.bg,
+    color: colors.charcoal,
     marginTop: spacing.xs,
   },
   planCardSub: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.pineSoft,
+    color: colors.violetGray,
     marginTop: spacing.xs,
   },
   toolTitle: {
     fontFamily: fonts.display,
     fontSize: 20,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
   toolDetail: {
     fontFamily: fonts.body,
@@ -742,29 +754,28 @@ const styles = StyleSheet.create({
   countdown: {
     fontFamily: fonts.displayBold,
     fontSize: 54,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     textAlign: 'center',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   passedNote: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     color: colors.amber,
     textAlign: 'center',
     marginTop: spacing.xs,
   },
   line: {
-    fontFamily: fonts.display,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 19,
     lineHeight: 27,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     textAlign: 'center',
     marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
     minHeight: 54,
   },
   whyCard: {
-    backgroundColor: colors.pine,
     borderRadius: radii.lg,
     padding: spacing.lg,
     marginRight: spacing.sm,
@@ -775,19 +786,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 27,
     lineHeight: 36,
-    color: colors.bg,
+    color: colors.white,
     marginTop: spacing.sm,
   },
   whySub: {
     fontFamily: fonts.body,
     fontSize: 15,
-    color: colors.pineSoft,
+    color: colors.lavender,
     marginTop: spacing.sm,
-  },
-  ledger: {
-    marginTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
   },
   centerBlock: {
     flex: 1,

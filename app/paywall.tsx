@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Body, Display, GhostButton, Label, Screen } from '@/components/ui';
 import { dailyCost, formatMoney, formatMoneyExact } from '@/lib/calc';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 
 /**
  * Mistless Plus paywall, DORMANT. Nothing here can be bought: the
@@ -58,9 +59,13 @@ export default function Paywall() {
 
   return (
     <Screen>
-      <View style={styles.seal}>
+      <LinearGradient
+        colors={[...gradients.hero]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.seal}>
         <Text style={styles.sealText}>Plus</Text>
-      </View>
+      </LinearGradient>
       <Label color={colors.amber} style={{ marginTop: spacing.md }}>
         Coming soon
       </Label>
@@ -144,8 +149,12 @@ export default function Paywall() {
       </View>
 
       {plan && (
-        <View style={styles.outcomeBlock}>
-          <Label color={colors.amber} style={{ marginBottom: spacing.sm }}>
+        <LinearGradient
+          colors={[...gradients.hero]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.outcomeBlock}>
+          <Label color={colors.lavender} style={{ marginBottom: spacing.sm }}>
             In your numbers
           </Label>
           <Text style={styles.outcomeLine}>
@@ -160,7 +169,7 @@ export default function Paywall() {
                 } with the free tools. Plus adds guided plans for the next ones.`
               : 'Every craving you ride out gets logged here, and Plus turns that history into guided plans for the next ones.'}
           </Text>
-        </View>
+        </LinearGradient>
       )}
 
       <Label style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
@@ -227,21 +236,17 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: 2,
-    borderColor: colors.pine,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sealText: {
     fontFamily: fonts.displayBold,
     fontSize: 17,
-    color: colors.pine,
+    color: colors.white,
   },
   toggleRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
+    backgroundColor: colors.surfaceMuted,
     borderRadius: radii.pill,
     padding: 4,
     marginTop: spacing.lg,
@@ -252,26 +257,24 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: radii.pill,
   },
-  toggleHalfActive: { backgroundColor: colors.pine },
+  toggleHalfActive: { backgroundColor: colors.white },
   toggleText: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.inkMuted,
   },
-  toggleTextActive: { color: colors.bg },
+  toggleTextActive: { color: colors.charcoal },
   tierCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.sm,
   },
-  tierCardActive: { borderColor: colors.pine, borderWidth: 2 },
+  tierCardActive: { backgroundColor: colors.pineSoft },
   tierLabel: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     color: colors.ink,
   },
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
   tierPrice: {
     fontFamily: fonts.display,
     fontSize: 19,
-    color: colors.pine,
+    color: colors.violetGray,
   },
   tierPer: {
     fontFamily: fonts.body,
@@ -298,8 +301,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   outcomeBlock: {
-    backgroundColor: colors.pineDeep,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.lg,
   },
@@ -307,14 +309,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,
-    color: colors.bg,
+    color: colors.white,
     marginBottom: spacing.sm,
   },
   featureRow: {
     flexDirection: 'row',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.lineStrong,
+    borderBottomColor: colors.line,
   },
   featureText: {
     fontFamily: fonts.body,
@@ -325,14 +327,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureHeadline: {
-    fontFamily: fonts.bodySemiBold,
-    color: colors.pineDeep,
+    fontFamily: fonts.bodyBold,
+    color: colors.charcoal,
   },
   freeBlock: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
   },
   freeRow: {
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   freeText: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     color: colors.ink,
     marginLeft: spacing.sm,
@@ -354,22 +354,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   reassure: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     textAlign: 'center',
     marginTop: spacing.lg,
   },
   comingSoon: {
     backgroundColor: colors.amberSoft,
-    borderRadius: radii.md,
+    borderRadius: radii.pill,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: spacing.md,
   },
   comingSoonText: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
 });

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { RECOVERY_TRACKS, trackProgress } from '../lib/milestones';
 import type { Plan } from '../types';
@@ -14,11 +14,21 @@ const STROKE = 9;
 const RADIUS = (RING_SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+/** One soft pastel gradient pair per recovery track. */
+const TRACK_GRADIENTS: Record<string, [string, string]> = {
+  heart: ['#F2A65A', '#A7A9DF'],
+  lungs: ['#A7A9DF', '#BFD9F2'],
+  energy: ['#D8D7F6', '#F6C177'],
+};
+
 /**
  * "Your body, recovering": three rings (Heart, Lungs, Energy) whose
  * fill is the milestone ladder for that system: rungs passed plus the
- * fraction of the way to the next rung. Rings sweep in on mount and
- * whenever the percentage moves. Framing stays population-level.
+ * fraction of the way to the next rung. In the PulseBuddy system the
+ * rings live inside a white card as soft gradient visuals — each
+ * track's stroke is its own pastel gradient over a pale lavender
+ * track. Rings sweep in on mount and whenever the percentage moves.
+ * Framing stays population-level.
  */
 export default function RecoveryRings({
   plan,
@@ -32,13 +42,14 @@ export default function RecoveryRings({
 }) {
   return (
     <View style={[styles.wrap, style]}>
-      <Label color={colors.pine}>Your body, recovering</Label>
+      <Label>Your body, recovering</Label>
       <View style={styles.ringRow}>
         {RECOVERY_TRACKS.map((track) => {
           const progress = trackProgress(track, plan, now);
           return (
             <Ring
               key={track.id}
+              trackId={track.id}
               label={track.label}
               percent={progress.percent}
               caption={
@@ -60,16 +71,20 @@ export default function RecoveryRings({
 }
 
 function Ring({
+  trackId,
   label,
   percent,
   caption,
 }: {
+  trackId: string;
   label: string;
   percent: number;
   caption: string;
 }) {
   const clamped = Math.min(1, Math.max(0, percent));
   const anim = useRef(new Animated.Value(0)).current;
+  const pair = TRACK_GRADIENTS[trackId] ?? ['#A7A9DF', '#D8D7F6'];
+  const gradId = `ring-${trackId}`;
 
   useEffect(() => {
     Animated.timing(anim, {
@@ -88,6 +103,12 @@ function Ring({
     <View style={styles.ringCell}>
       <View style={styles.ringBox}>
         <Svg width={RING_SIZE} height={RING_SIZE}>
+          <Defs>
+            <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={pair[0]} />
+              <Stop offset="1" stopColor={pair[1]} />
+            </LinearGradient>
+          </Defs>
           <Circle
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
@@ -100,7 +121,7 @@ function Ring({
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RADIUS}
-            stroke={colors.pine}
+            stroke={`url(#${gradId})`}
             strokeWidth={STROKE}
             fill="none"
             strokeLinecap="round"
@@ -147,10 +168,10 @@ const styles = StyleSheet.create({
   percentText: {
     fontFamily: fonts.displayBold,
     fontSize: 20,
-    color: colors.pineDeep,
+    color: colors.charcoal,
   },
   ringLabel: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.ink,
     marginTop: spacing.sm,

@@ -33,7 +33,7 @@ export function CoinCollector({
   const percent = goal ? (savingsGoalPercent(goal, moneyKept) ?? 0) : 0;
   const content = (
     <>
-      <Label color={colors.pine}>Coin collector</Label>
+      <Label>Coin collector</Label>
       <View style={styles.jarSlot}>
         <CoinJar moneyKept={moneyKept} height={170} />
       </View>
@@ -83,9 +83,7 @@ export function CoinCollector({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginTop: spacing.lg,
   },

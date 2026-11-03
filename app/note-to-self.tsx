@@ -1,11 +1,12 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import MaxWidth from '@/components/MaxWidth';
-import { Body, Display, GhostButton, Label, Screen } from '@/components/ui';
+import { Body, Card, Display, GhostButton, Label, Screen } from '@/components/ui';
 import { formatDate, formatMoneyExact, isTaperActive } from '@/lib/calc';
 import { useStore } from '@/store/useStore';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { colors, fonts, gradients, radii, spacing } from '@/theme';
 import type { Plan } from '@/types';
 
 /**
@@ -86,7 +87,7 @@ export default function NoteToSelf() {
           You wrote this on day one, with a clear head. It is still true.
         </Body>
 
-        <View style={styles.declaration}>
+        <Card style={{ marginTop: spacing.xl }}>
           {lines.map((line, i) => (
             <Text key={i} style={styles.declarationLine}>
               {line}
@@ -95,27 +96,30 @@ export default function NoteToSelf() {
           <Text style={styles.signature}>
             — {plan.userName ?? 'You, on day one'}
           </Text>
-        </View>
+        </Card>
 
         <Pressable
           onPress={() => router.push('/(tabs)/settings')}
-          style={({ pressed }) => [
-            styles.whyCard,
-            { opacity: pressed ? 0.88 : 1 },
-          ]}>
-          <Label color={colors.amberBright}>Why I'm done ❤️</Label>
-          {plan.reasons.length > 0 ? (
-            plan.reasons.map((r) => (
-              <Text key={r} style={styles.whyReason}>
-                {r}
+          style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}>
+          <LinearGradient
+            colors={[...gradients.hero]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.whyCard}>
+            <Label color={colors.lavender}>Why I'm done ❤️</Label>
+            {plan.reasons.length > 0 ? (
+              plan.reasons.map((r) => (
+                <Text key={r} style={styles.whyReason}>
+                  {r}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.whyReason}>
+                No reasons written yet. Tap to add the ones that matter.
               </Text>
-            ))
-          ) : (
-            <Text style={styles.whyReason}>
-              No reasons written yet. Tap to add the ones that matter.
-            </Text>
-          )}
-          <Text style={styles.whyCaption}>Tap to edit your reasons</Text>
+            )}
+            <Text style={styles.whyCaption}>Tap to edit your reasons</Text>
+          </LinearGradient>
         </Pressable>
 
         <View style={{ marginTop: spacing.xl }}>
@@ -127,17 +131,11 @@ export default function NoteToSelf() {
 }
 
 const styles = StyleSheet.create({
-  declaration: {
-    marginTop: spacing.xl,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.lineStrong,
-    paddingTop: spacing.lg,
-  },
   declarationLine: {
     fontFamily: fonts.display,
     fontSize: 24,
     lineHeight: 35,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     marginBottom: spacing.md,
   },
   signature: {
@@ -147,7 +145,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   whyCard: {
-    backgroundColor: colors.pine,
     borderRadius: radii.lg,
     padding: spacing.lg,
     marginTop: spacing.xl,
@@ -156,7 +153,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 19,
     lineHeight: 27,
-    color: colors.bg,
+    color: colors.white,
     marginTop: spacing.sm,
   },
   whyCaption: {
@@ -164,7 +161,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: colors.amberBright,
+    color: colors.lavender,
     marginTop: spacing.lg,
   },
 });

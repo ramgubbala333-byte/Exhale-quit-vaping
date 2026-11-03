@@ -18,6 +18,26 @@ backend.
 > AsyncStorage key (`exhale-state-v1`). All user-facing strings say
 > Mistless.
 
+> **UI redesign — PulseBuddy match (Oct 31, 2026).** At the owner's
+> direction ("copy 100% of their UI for our apps"), the entire interface
+> was reskinned 1:1 to the visual system of the Dribbble shot
+> "PulseBuddy — Mobile App Design for Diabetes Tracking" by Phenomenon
+> Studio: light pastel lavender theme, white 20–28dp-radius cards, pill
+> buttons/inputs, Nunito rounded sans throughout, a glossy state blob
+> (calm pale blue-white ↔ warm peach), a peach-to-lavender wavy craving
+> chart, a gradient bar trend chart with 1D/1W/1M/3M switching and an
+> "Average — value — status" headline, day-grouped journal check-lists
+> ("Today — n actions"), and a floating white pill tab bar whose active
+> item is a solid charcoal circle. Mistless keeps its own name, copy,
+> features, and watercolor illustrations (shown whole via contain,
+> never cropped). This owner-directed redesign supersedes the previous
+> dark pine + Fraunces design described in git history. The redesign is
+> purely visual: the store, state shape, and the `exhale-state-v1`
+> AsyncStorage key are untouched, and the Expo Go runtime gate was run
+> (native modules aligned to SDK 58 `bundledNativeModules.json`:
+> gesture-handler 3.4.0 → 3.3.0, worklets 0.13.1 → 0.13.0, react and
+> react-dom 19.3.1 → 19.3.0).
+
 ## Run it
 
 ```bash
@@ -250,13 +270,22 @@ The About screen leads with this promise.
 
 ## Design notes
 
-House rules, enforced throughout: no glassmorphism, no purple-black
-palettes, no glowing orbs, no dot grids, no rainbow gradients, no emojis
-in UI copy, no three-cards-in-a-row or bento layouts, no default
-Inter/Geist fonts. The look is editorial: warm off-white (`#F7F3EB`),
-deep pine (`#14453D`), one amber accent (`#D9932E`), Fraunces display
-type against Archivo body text, and ledger-style stat rows with hairline
-dividers rather than card grids.
+Current system (PulseBuddy match, Oct 31, 2026 — see the redesign note
+at the top): light pastel theme. Background pale lavender `#EDECF9`,
+cards white, primary violet-gray `#7576AA`, periwinkle `#A7A9DF`,
+lavender `#D8D7F6`, charcoal text `#2A2A2D`, warm peach `#F2A65A` for
+needs-attention states, small green `#58B368` checks for completed or
+logged items. Nunito (400/600/700/800/900) everywhere; very large bold
+hero numbers; small gray captions. Cards are radius 20–28dp, buttons
+and inputs fully pill-shaped, icon buttons fully circular, separation
+by white cards on the tinted background with minimal shadow. The
+glossy state blob (`src/components/StateBlob.tsx`) shifts gradient
+with state: pale blue-white when calm, warm peach in SOS/urge
+contexts. Watercolor plates render through `ArtPlate` with
+`resizeMode="contain"` inside white frames — always whole, never
+cropped. (The pre-redesign editorial pine/Fraunces system and its
+house rules were superseded for this app by the owner's explicit
+PulseBuddy direction.)
 
 Responsive: every tab screen renders inside a shared `MaxWidth` wrapper
 that caps content at 600dp and centers it, so nothing stretches

@@ -2,7 +2,7 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Alert,
   Platform,
@@ -286,11 +286,11 @@ export default function Settings() {
   };
 
   return (
-    <Screen>
+    <Screen padBottom={120}>
       <MaxWidth>
       <Display size={32}>Settings</Display>
 
-      <Label style={styles.sectionLabel}>Your habit baseline</Label>
+      <Section title="Your habit baseline">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         These numbers drive the savings math. Right now they add up to about{' '}
         {formatMoney(dailyCost(plan))} a day.
@@ -350,7 +350,9 @@ export default function Settings() {
       />
       <PrimaryButton title={saved ? 'Saved' : 'Save habit numbers'} onPress={savePlan} />
 
-      <Label style={styles.sectionLabel}>Savings goal</Label>
+      </Section>
+
+      <Section title="Savings goal">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         Name the thing your kept money is buying. Your progress shows on
         Home and Stats, filled by the money you did not spend on vaping.
@@ -380,7 +382,9 @@ export default function Settings() {
         />
       )}
 
-      <Label style={styles.sectionLabel}>Your craving plans</Label>
+      </Section>
+
+      <Section title="Your craving plans">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         If-then plans, decided in a calm moment for the hard ones. Up to{' '}
         {MAX_CRAVING_PLANS}. They show up in SOS whenever you need them.
@@ -405,7 +409,9 @@ export default function Settings() {
         />
       )}
 
-      <Label style={styles.sectionLabel}>Your reasons</Label>
+      </Section>
+
+      <Section title="Your reasons">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         Why you are done. These are the lines on your Note to Self, and the
         ones SOS hands back to you in a craving.
@@ -444,7 +450,9 @@ export default function Settings() {
         onPress={saveReasons}
       />
 
-      <Label style={styles.sectionLabel}>Your person</Label>
+      </Section>
+
+      <Section title="Your person">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         One name for the SOS "Message my person" button. Mistless never
         contacts them on its own. The button only opens your messages app
@@ -461,14 +469,18 @@ export default function Settings() {
         onPress={saveSupport}
       />
 
-      <Label style={styles.sectionLabel}>Your data</Label>
+      </Section>
+
+      <Section title="Your data">
       <Body color={colors.inkMuted} style={{ marginBottom: spacing.md }}>
         Everything lives on this phone. Export a copy of it all as JSON
         whenever you like; nothing leaves the device unless you share it.
       </Body>
       <GhostButton title="Export my data" onPress={exportData} />
 
-      <Label style={styles.sectionLabel}>Quit date</Label>
+      </Section>
+
+      <Section title="Quit date">
       <Body color={colors.inkMuted}>
         Currently set to{' '}
         {new Date(plan.quitDate).toLocaleString('en-US', {
@@ -500,7 +512,9 @@ export default function Settings() {
         <GhostButton title="Done" onPress={() => setPickerMode(null)} />
       )}
 
-      <Label style={styles.sectionLabel}>Reminders</Label>
+      </Section>
+
+      <Section title="Reminders">
       <View style={styles.toggleRow}>
         <View style={{ flex: 1, marginRight: spacing.md }}>
           <Text style={styles.toggleTitle}>Daily check-in and milestones</Text>
@@ -601,13 +615,17 @@ export default function Settings() {
         />
       </View>
 
-      <Label style={styles.sectionLabel}>Mistless Plus</Label>
+      </Section>
+
+      <Section title="Mistless Plus">
       <GhostButton
         title="See what Plus will include"
         onPress={() => router.push('/paywall')}
       />
 
-      <Label style={styles.sectionLabel}>About</Label>
+      </Section>
+
+      <Section title="About">
       <GhostButton
         title="My plan reveal"
         onPress={() => router.push('/reveal?from=settings')}
@@ -618,28 +636,48 @@ export default function Settings() {
       />
       <GhostButton title="About Mistless" onPress={() => router.push('/about')} />
 
-      <Label style={styles.sectionLabel}>Danger zone</Label>
+      </Section>
+
+      <Section title="Danger zone">
       <GhostButton title="Reset all data" danger onPress={confirmResetAll} />
+      </Section>
     </MaxWidth>
     </Screen>
   );
 }
 
+/** One settings section: a white rounded card with a small label. */
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.sectionCard}>
+      <Label style={{ marginBottom: spacing.sm }}>{title}</Label>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  sectionLabel: { marginTop: spacing.xl, marginBottom: spacing.sm },
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 28,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.sm },
   pickerButtons: { flexDirection: 'row', marginTop: spacing.sm },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
-    padding: spacing.md,
+    paddingVertical: spacing.sm,
   },
   toggleTitle: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: colors.ink,
   },
@@ -653,10 +691,8 @@ const styles = StyleSheet.create({
   planManageRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 20,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     marginBottom: spacing.sm,

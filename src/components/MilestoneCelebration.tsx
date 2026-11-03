@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Image, Modal, Share, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Share, StyleSheet, Text, View } from 'react-native';
+
+import ArtPlate from './ArtPlate';
 
 import { formatMoneyExact } from '../lib/calc';
 import { haptics } from '../lib/haptics';
@@ -87,14 +89,12 @@ export default function MilestoneCelebration({
       onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <View style={styles.headerArtFrame}>
-            <Image
-              source={milestoneDawn}
-              style={styles.artFill}
-              resizeMode="cover"
-              accessibilityLabel="Watercolor illustration of the window at clear dawn, the mist gone"
-            />
-          </View>
+          <ArtPlate
+            source={milestoneDawn}
+            aspect={0.5}
+            widthPct={48}
+            label="Watercolor illustration of the window at clear dawn, the mist gone"
+          />
           <View style={styles.sealWrap}>
             <Animated.View
               style={[
@@ -136,29 +136,13 @@ export default function MilestoneCelebration({
 }
 
 const styles = StyleSheet.create({
-  headerArtFrame: {
-    width: '48%',
-    alignSelf: 'center',
-    aspectRatio: 1 / 2,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    marginBottom: spacing.lg,
-  },
-  artFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
   sealWrap: {
     width: 120,
     height: 120,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   sealRing: {
     position: 'absolute',
@@ -172,6 +156,7 @@ const styles = StyleSheet.create({
     width: 108,
     height: 108,
     borderRadius: 54,
+    backgroundColor: colors.pineSoft,
     borderWidth: 2,
     borderColor: colors.amberBright,
     alignItems: 'center',
@@ -182,45 +167,47 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     fontSize: 17,
     lineHeight: 21,
-    color: colors.bg,
+    color: colors.charcoal,
     textAlign: 'center',
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(12, 46, 40, 0.55)',
+    backgroundColor: 'rgba(42, 42, 45, 0.45)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.pine,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
+    alignItems: 'center',
   },
   title: {
     fontFamily: fonts.display,
     fontSize: 26,
     lineHeight: 33,
-    color: colors.bg,
+    color: colors.charcoal,
     marginTop: spacing.sm,
+    textAlign: 'center',
   },
   big: {
     fontFamily: fonts.displayBold,
     fontSize: 30,
-    color: colors.bg,
+    color: colors.charcoal,
     marginTop: spacing.lg,
+    textAlign: 'center',
   },
   sub: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    color: colors.amberBright,
+    color: colors.amber,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   actions: {
     marginTop: spacing.lg,
-    backgroundColor: colors.bg,
-    borderRadius: radii.lg,
-    padding: spacing.md,
+    alignSelf: 'stretch',
   },
 });

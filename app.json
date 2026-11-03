@@ -2,7 +2,7 @@
   "expo": {
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#14453D"
+        "backgroundColor": "#D8D7F6"
       },
       "package": "co.exhale.app"
     },

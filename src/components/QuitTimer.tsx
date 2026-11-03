@@ -9,7 +9,11 @@ function pad(n: number): string {
   return n.toString().padStart(2, '0');
 }
 
-/** Ticking quit timer: large day count plus HH:MM:SS underneath. */
+/**
+ * Ticking quit timer: the hero metric. A very large bold day count
+ * with the HH:MM:SS underneath — PulseBuddy's "hero number first"
+ * pattern in rounded Nunito black on charcoal.
+ */
 export default function QuitTimer({ plan }: { plan: Plan }) {
   const [now, setNow] = useState(() => new Date());
 
@@ -23,10 +27,10 @@ export default function QuitTimer({ plan }: { plan: Plan }) {
   return (
     <View>
       <View style={styles.dayRow}>
-        <Text style={styles.days}>{parts.days}</Text>
-        <Text style={styles.daysUnit}>{parts.days === 1 ? 'day' : 'days'}</Text>
+        <Text style={styles.days} maxFontSizeMultiplier={1.15}>{parts.days}</Text>
+        <Text style={styles.daysUnit} maxFontSizeMultiplier={1.3}>{parts.days === 1 ? 'day' : 'days'}</Text>
       </View>
-      <Text style={styles.clock}>
+      <Text style={styles.clock} maxFontSizeMultiplier={1.3}>
         {pad(parts.hours)}:{pad(parts.minutes)}:{pad(parts.seconds)}
       </Text>
       <Text style={styles.caption}>hours, minutes, seconds nicotine-free</Text>
@@ -38,21 +42,21 @@ const styles = StyleSheet.create({
   dayRow: { flexDirection: 'row', alignItems: 'baseline' },
   days: {
     fontFamily: fonts.displayBold,
-    fontSize: 84,
-    lineHeight: 88,
-    color: colors.pineDeep,
+    fontSize: 88,
+    lineHeight: 92,
+    color: colors.charcoal,
   },
   daysUnit: {
     fontFamily: fonts.display,
     fontSize: 26,
-    color: colors.pine,
+    color: colors.violetGray,
     marginLeft: 10,
   },
   clock: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 24,
     letterSpacing: 3,
-    color: colors.ink,
+    color: colors.charcoal,
     marginTop: 2,
   },
   caption: {

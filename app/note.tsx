@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
+    borderColor: colors.line,
     borderRadius: radii.md,
     padding: spacing.md,
     minHeight: 160,

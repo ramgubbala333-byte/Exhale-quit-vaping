@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { dailyCost, elapsedDays, formatMoneyExact } from './calc';
@@ -13,7 +12,45 @@ import type { Plan } from '../types';
  * health milestone. Everything is wrapped defensively: notifications are
  * a nice-to-have, and the app must work identically if permission is
  * denied or the platform (e.g. web) does not support scheduling.
+ *
+ * expo-notifications is loaded LAZILY, never at module scope. Its JS
+ * entry point eagerly imports expo-application, and on Expo Go the
+ * ExpoApplication native module is not there to answer
+ * (expo-notifications carries only partial Expo Go support since
+ * SDK 53), so a top-level import throws inside requireNativeModule
+ * while the app is still loading and takes the whole app down. Here
+ * the package is required on first use, inside try/catch, and only
+ * after probing for its native modules with
+ * requireOptionalNativeModule. Where the native side is absent
+ * (Expo Go) every function degrades to a graceful no-op; in a
+ * development or standalone build the native modules exist and the
+ * reminders work exactly as designed.
  */
+
+type NotificationsModule = typeof import('expo-notifications');
+
+let cachedNotifications: NotificationsModule | null | undefined;
+
+function loadNotifications(): NotificationsModule | null {
+  if (cachedNotifications !== undefined) return cachedNotifications;
+  cachedNotifications = null;
+  if (Platform.OS === 'web') return null;
+  try {
+    const { requireOptionalNativeModule } =
+      require('expo-modules-core') as typeof import('expo-modules-core');
+    // Probe before requiring: evaluating expo-notifications evaluates
+    // expo-application, which throws when its native module is
+    // missing, so only pull the package in once both native sides
+    // answer.
+    if (!requireOptionalNativeModule('ExpoApplication')) return null;
+    if (!requireOptionalNativeModule('ExpoNotifications')) return null;
+    cachedNotifications =
+      require('expo-notifications') as NotificationsModule;
+  } catch {
+    cachedNotifications = null;
+  }
+  return cachedNotifications;
+}
 
 const DAILY_ID = 'exhale-daily-checkin';
 const MILESTONE_PREFIX = 'exhale-milestone-';
@@ -23,19 +60,27 @@ const SWEEP_ID = 'mistless-savings-sweep';
 const ENGAGEMENT_IDS = [DANGER_ID, MISSION_ID, SWEEP_ID];
 
 export function setupNotificationHandler() {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
-  });
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {
+    // Handler setup is best-effort; the app runs identically without it.
+  }
 }
 
 /** Asks for permission when not yet decided. Returns true when granted. */
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
   try {
     const current = await Notifications.getPermissionsAsync();
     if (current.granted) return true;
@@ -49,6 +94,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
 export async function scheduleReminders(plan: Plan): Promise<void> {
   if (Platform.OS === 'web') return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     await cancelReminders();
 
@@ -95,6 +142,8 @@ export async function scheduleReminders(plan: Plan): Promise<void> {
 
 export async function cancelReminders(): Promise<void> {
   if (Platform.OS === 'web') return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(
@@ -128,6 +177,8 @@ export async function cancelReminders(): Promise<void> {
  */
 export async function refreshAllNotifications(): Promise<void> {
   if (Platform.OS === 'web') return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     const s = useStore.getState();
     if (!s.notificationsEnabled || !s.plan) {

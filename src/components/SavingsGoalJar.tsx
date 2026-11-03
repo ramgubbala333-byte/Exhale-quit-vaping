@@ -82,7 +82,7 @@ export function SavingsGoalStrip({
       <View style={styles.stripRow}>
         <CoinJar moneyKept={moneyKept} height={84} animateDrops={false} />
         <View style={styles.stripText}>
-          <Label color={colors.pine}>Saving toward: {goal.name}</Label>
+          <Label>Saving toward: {goal.name}</Label>
           <Text style={styles.stripPercent}>{Math.floor(percent)}% there</Text>
           <Text style={styles.stripDetail}>
             {formatMoneyExact(Math.min(moneyKept, goal.price))} of{' '}
@@ -124,9 +124,7 @@ const styles = StyleSheet.create({
   },
   strip: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: 14,
+    borderRadius: 20,
     padding: spacing.md,
     marginTop: spacing.lg,
   },

@@ -11,16 +11,32 @@ const PHASE_LABEL: Record<BreathPhase, string> = {
   out: 'Breathe out',
 };
 
-const PHASE_MS = 4000;
+export interface BreathPattern {
+  id: string;
+  label: string;
+  /** Seconds for the inhale. */
+  inSec: number;
+  /** Seconds for the hold. */
+  holdSec: number;
+  /** Seconds for the exhale. */
+  outSec: number;
+}
+
+export const BREATH_PATTERNS: BreathPattern[] = [
+  { id: '444', label: '4-4-4 · Steady', inSec: 4, holdSec: 4, outSec: 4 },
+  { id: '478', label: '4-7-8 · Calming', inSec: 4, holdSec: 7, outSec: 8 },
+];
 
 /**
- * Guided 4-4-4 breathing circle. The circle scales up on the inhale,
- * holds, and eases back down on the exhale, looping until unmounted.
- * Calls onPhaseChange so the SOS screen can narrate the session.
+ * Guided breathing circle. The circle scales up on the inhale, holds,
+ * and eases back down on the exhale, looping until unmounted. The pace
+ * comes from the chosen pattern (4-4-4 steady, or the slower 4-7-8).
  */
 export default function BreathingCircle({
+  pattern = BREATH_PATTERNS[0],
   onPhaseChange,
 }: {
+  pattern?: BreathPattern;
   onPhaseChange?: (phase: BreathPhase) => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -43,7 +59,7 @@ export default function BreathingCircle({
       setPhaseSafe('in');
       Animated.timing(scale, {
         toValue: 1.35,
-        duration: PHASE_MS,
+        duration: pattern.inSec * 1000,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start(() => {
@@ -55,13 +71,13 @@ export default function BreathingCircle({
             setPhaseSafe('out');
             Animated.timing(scale, {
               toValue: 1,
-              duration: PHASE_MS,
+              duration: pattern.outSec * 1000,
               easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }).start(() => {
               if (!cancelled) runCycle();
             });
-          }, PHASE_MS),
+          }, pattern.holdSec * 1000),
         );
       });
     };
@@ -72,7 +88,7 @@ export default function BreathingCircle({
       timers.forEach(clearTimeout);
       scale.stopAnimation();
     };
-  }, [scale]);
+  }, [scale, pattern]);
 
   return (
     <View style={styles.wrap}>
@@ -81,7 +97,9 @@ export default function BreathingCircle({
         <View style={styles.core} />
       </Animated.View>
       <Text style={styles.phaseLabel}>{PHASE_LABEL[phase]}</Text>
-      <Text style={styles.phaseHint}>4 seconds in, 4 hold, 4 out</Text>
+      <Text style={styles.phaseHint}>
+        {pattern.inSec} seconds in, {pattern.holdSec} hold, {pattern.outSec} out
+      </Text>
     </View>
   );
 }
@@ -93,22 +111,22 @@ const styles = StyleSheet.create({
     height: 190,
     borderRadius: 95,
     borderWidth: 2,
-    borderColor: colors.pine,
+    borderColor: colors.periwinkle,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.pineSoft,
+    backgroundColor: colors.calmSoft,
   },
   core: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.pine,
-    opacity: 0.9,
+    backgroundColor: colors.periwinkle,
+    opacity: 0.85,
   },
   phaseLabel: {
     fontFamily: fonts.display,
     fontSize: 26,
-    color: colors.pineDeep,
+    color: colors.charcoal,
     marginTop: 28,
   },
   phaseHint: {
